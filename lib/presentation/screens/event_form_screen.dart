@@ -165,6 +165,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   void _save() {
     if (_formKey.currentState!.validate()) {
       final childId = context.read<AppBloc>().state.selectedChild!.id;
+      final isNewEvent = !isEditing || _existingEvent == null;
 
       if (isEditing && _existingEvent != null) {
         final updatedEvent = _existingEvent!.copyWith(
@@ -186,7 +187,12 @@ class _EventFormScreenState extends State<EventFormScreen> {
         );
       }
       context.read<TimelineBloc>().add(TimelineRefresh(childId));
-      context.pop();
+
+      if (isNewEvent) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        context.pop();
+      }
     }
   }
 }

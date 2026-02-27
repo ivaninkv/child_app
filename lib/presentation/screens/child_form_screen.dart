@@ -173,6 +173,8 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
 
   void _save() {
     if (_formKey.currentState!.validate() && _birthDate != null) {
+      final isNewChild = !isEditing || _existingChild == null;
+
       if (isEditing && _existingChild != null) {
         final updatedChild = _existingChild!.copyWith(
           name: _nameController.text,
@@ -192,7 +194,12 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
         );
       }
       context.read<AppBloc>().add(AppRefreshChildren());
-      context.pop();
+
+      if (isNewChild) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        context.pop();
+      }
     } else if (_birthDate == null) {
       ScaffoldMessenger.of(
         context,

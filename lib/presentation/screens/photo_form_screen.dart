@@ -253,6 +253,7 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
 
   void _save() {
     final childId = context.read<AppBloc>().state.selectedChild!.id;
+    final isNewPhoto = !isEditing || _existingPhoto == null;
 
     if (isEditing && _existingPhoto != null) {
       final updatedPhoto = _existingPhoto!.copyWith(
@@ -271,6 +272,11 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
       );
     }
     context.read<TimelineBloc>().add(TimelineRefresh(childId));
-    context.pop();
+
+    if (isNewPhoto) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      context.pop();
+    }
   }
 }

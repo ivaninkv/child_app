@@ -207,7 +207,12 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
         );
       }
       context.read<TimelineBloc>().add(TimelineRefresh(childId));
-      context.pop();
+
+      if (!isEditing || _existingParameter == null) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        context.pop();
+      }
     }
   }
 }
