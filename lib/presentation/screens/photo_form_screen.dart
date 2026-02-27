@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 import '../bloc/photos/photos_bloc.dart';
 import '../bloc/timeline/timeline_bloc.dart';
 import '../bloc/app/app_bloc.dart';
@@ -251,9 +253,35 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
     }
   }
 
-  void _save() {
+  Future<String?> _generateThumbnail(String imagePath) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final thumbnailDir = Directory('${dir.path}/thumbnails');
+    if (!await thumbnailDir.exists()) {
+      await thumbnailDir.create(recursive: true);
+    }
+
+    final fileName = 'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final thumbnailPath = '${thumbnailDir.path}/$fileName';
+
+    final result = await FlutterImageCompress.compressAndGetFile(
+      imagePath,
+      thumbnailPath,
+      quality: 70,
+      minWidth: 400,
+      minHeight: 400,
+    );
+
+    return result?.path;
+  }
+
+  Future<void> _save() async {
     final childId = context.read<AppBloc>().state.selectedChild!.id;
     final isNewPhoto = !isEditing || _existingPhoto == null;
+
+    String? thumbnailPath;
+    if (!isEditing || _existingPhoto == null) {
+      thumbnailPath = await _generateThumbnail(_imagePath!);
+    }
 
     if (isEditing && _existingPhoto != null) {
       final updatedPhoto = _existingPhoto!.copyWith(
@@ -266,6 +294,7 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
         PhotosAdd(
           childId: childId,
           imagePath: _imagePath!,
+          thumbnailPath: thumbnailPath,
           date: _date,
           tags: _selectedTags,
         ),

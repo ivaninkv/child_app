@@ -24,18 +24,20 @@ class PhotosLoad extends PhotosEvent {
 class PhotosAdd extends PhotosEvent {
   final String childId;
   final String imagePath;
+  final String? thumbnailPath;
   final DateTime date;
   final List<String> tags;
 
   const PhotosAdd({
     required this.childId,
     required this.imagePath,
+    this.thumbnailPath,
     required this.date,
     required this.tags,
   });
 
   @override
-  List<Object?> get props => [childId, imagePath, date, tags];
+  List<Object?> get props => [childId, imagePath, thumbnailPath, date, tags];
 }
 
 class PhotosUpdate extends PhotosEvent {
@@ -124,6 +126,7 @@ class PhotosBloc extends Bloc<PhotosEvent, PhotosState> {
         id: _uuid.v4(),
         childId: event.childId,
         imagePath: event.imagePath,
+        thumbnailPath: event.thumbnailPath,
         date: event.date,
         tags: event.tags,
         createdAt: DateTime.now(),

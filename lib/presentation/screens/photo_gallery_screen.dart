@@ -256,12 +256,13 @@ class _PhotoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageFile = File(photo.thumbnailPath ?? photo.imagePath);
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: Image.file(
-          File(photo.imagePath),
+          imageFile,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(

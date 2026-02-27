@@ -95,13 +95,14 @@ class TimelineCard extends StatelessWidget {
 
   Widget _buildPhotoCard(BuildContext context) {
     final photo = item.photo!;
+    final imageFile = File(photo.thumbnailPath ?? photo.imagePath);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.file(
-            File(photo.imagePath),
+            imageFile,
             width: 80,
             height: 80,
             fit: BoxFit.cover,
