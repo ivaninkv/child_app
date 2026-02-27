@@ -18,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final DatabaseHelper _db = DatabaseHelper.instance;
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +68,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: _buildChildSelector(appState),
+            title: _currentIndex == 0
+                ? _buildSearchField()
+                : _buildChildSelector(appState),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.settings),
-                onPressed: () => context.go('/settings'),
-              ),
+              if (_currentIndex != 0)
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () => context.go('/settings'),
+                ),
             ],
           ),
           body: _buildBody(selectedChild),
@@ -135,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody(Child child) {
     switch (_currentIndex) {
       case 0:
-        return _TimelineTab(childId: child.id);
+        return _TimelineTab(childId: child.id, searchQuery: _searchQuery);
       case 1:
         return _PhotosTab(childId: child.id);
       case 2:
@@ -143,6 +147,32 @@ class _HomeScreenState extends State<HomeScreen> {
       default:
         return const SizedBox();
     }
+  }
+
+  Widget _buildSearchField() {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        decoration: InputDecoration(
+          hintText: 'Поиск...',
+          prefixIcon: const Icon(Icons.search, size: 20),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () => setState(() => _searchQuery = ''),
+                )
+              : null,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        ),
+        onChanged: (value) => setState(() => _searchQuery = value),
+      ),
+    );
   }
 
   Widget _buildFab(BuildContext context, Child child) {
@@ -206,8 +236,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _TimelineTab extends StatefulWidget {
   final String childId;
+  final String searchQuery;
 
-  const _TimelineTab({required this.childId});
+  const _TimelineTab({required this.childId, this.searchQuery = ''});
 
   @override
   State<_TimelineTab> createState() => _TimelineTabState();
@@ -237,22 +268,43 @@ class _TimelineTabState extends State<_TimelineTab> {
         }
 
         if (state is TimelineLoaded) {
-          if (state.items.isEmpty) {
+          final query = widget.searchQuery.toLowerCase();
+          final filteredItems = query.isEmpty
+              ? state.items
+              : state.items.where((item) {
+                  if (item.event != null) {
+                    final event = item.event!;
+                    return event.title.toLowerCase().contains(query) ||
+                        event.description.toLowerCase().contains(query) ||
+                        (event.category?.toLowerCase().contains(query) ??
+                            false);
+                  }
+                  if (item.photo != null) {
+                    final photo = item.photo!;
+                    return photo.tags.any(
+                      (tag) => tag.toLowerCase().contains(query),
+                    );
+                  }
+                  return false;
+                }).toList();
+
+          if (filteredItems.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.timeline, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Пока нет записей',
-                    style: TextStyle(color: Colors.grey),
+                  Text(
+                    query.isEmpty ? 'Пока нет записей' : 'Ничего не найдено',
+                    style: const TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.go('/event/add'),
-                    child: const Text('Добавить первое событие'),
-                  ),
+                  if (query.isEmpty)
+                    TextButton(
+                      onPressed: () => context.go('/event/add'),
+                      child: const Text('Добавить первое событие'),
+                    ),
                 ],
               ),
             );
@@ -264,9 +316,9 @@ class _TimelineTabState extends State<_TimelineTab> {
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: state.items.length,
+              itemCount: filteredItems.length,
               itemBuilder: (context, index) {
-                final item = state.items[index];
+                final item = filteredItems[index];
                 return TimelineCard(
                   item: item,
                   onTap: () {
