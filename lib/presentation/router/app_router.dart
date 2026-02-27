@@ -51,13 +51,21 @@ class AppRouter {
           ),
           GoRoute(
             path: 'photo/add',
-            builder: (context, state) => const PhotoFormScreen(),
+            builder: (context, state) {
+              final fromTab = int.tryParse(
+                state.uri.queryParameters['fromTab'] ?? '',
+              );
+              return PhotoFormScreen(fromTab: fromTab);
+            },
           ),
           GoRoute(
             path: 'photo/edit/:id',
             builder: (context, state) {
               final id = state.pathParameters['id']!;
-              return PhotoFormScreen(photoId: id);
+              final fromTab = int.tryParse(
+                state.uri.queryParameters['fromTab'] ?? '',
+              );
+              return PhotoFormScreen(photoId: id, fromTab: fromTab);
             },
           ),
           GoRoute(
@@ -92,7 +100,10 @@ class AppRouter {
             builder: (context, state) {
               final index =
                   int.tryParse(state.pathParameters['index'] ?? '0') ?? 0;
-              return PhotoViewerScreen(initialIndex: index);
+              final fromTab = int.tryParse(
+                state.uri.queryParameters['fromTab'] ?? '',
+              );
+              return PhotoViewerScreen(initialIndex: index, fromTab: fromTab);
             },
           ),
           GoRoute(

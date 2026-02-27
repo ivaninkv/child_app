@@ -9,8 +9,13 @@ import '../bloc/app/app_bloc.dart';
 
 class PhotoViewerScreen extends StatefulWidget {
   final int initialIndex;
+  final int? fromTab;
 
-  const PhotoViewerScreen({super.key, required this.initialIndex});
+  const PhotoViewerScreen({
+    super.key,
+    required this.initialIndex,
+    this.fromTab,
+  });
 
   @override
   State<PhotoViewerScreen> createState() => _PhotoViewerScreenState();
@@ -114,7 +119,13 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () => Navigator.of(context).pop(),
+                            onPressed: () {
+                              if (widget.fromTab != null) {
+                                context.go('/?tab=${widget.fromTab}');
+                              } else {
+                                Navigator.of(context).pop();
+                              }
+                            },
                           ),
                           Text(
                             '${_currentIndex + 1} / ${photos.length}',
@@ -134,7 +145,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                                 onPressed: () {
                                   final photo = photos[_currentIndex];
                                   Navigator.of(context).pop();
-                                  context.go('/photo/edit/${photo.id}');
+                                  context.go(
+                                    '/photo/edit/${photo.id}?fromTab=${widget.fromTab ?? 1}',
+                                  );
                                 },
                               ),
                               IconButton(
@@ -244,7 +257,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
               );
               context.read<TimelineBloc>().add(TimelineRefresh(childId));
               Navigator.pop(ctx);
-              Navigator.of(context).pop();
+              if (widget.fromTab != null) {
+                context.go('/?tab=${widget.fromTab}');
+              } else {
+                Navigator.of(context).pop();
+              }
             },
             child: const Text('Удалить'),
           ),

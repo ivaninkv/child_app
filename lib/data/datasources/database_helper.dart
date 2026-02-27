@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -29,6 +29,16 @@ class DatabaseHelper {
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE photos ADD COLUMN thumbnail_path TEXT');
+    }
+    if (oldVersion < 3) {
+      // Проверяем, существует ли колонка thumbnail_path
+      final result = await db.rawQuery("PRAGMA table_info(photos)");
+      final hasThumbnailPath = result.any(
+        (col) => col['name'] == 'thumbnail_path',
+      );
+      if (!hasThumbnailPath) {
+        await db.execute('ALTER TABLE photos ADD COLUMN thumbnail_path TEXT');
+      }
     }
   }
 
@@ -62,6 +72,7 @@ class DatabaseHelper {
         id TEXT PRIMARY KEY,
         child_id TEXT NOT NULL,
         image_path TEXT NOT NULL,
+        thumbnail_path TEXT,
         date INTEGER NOT NULL,
         created_at INTEGER NOT NULL,
         FOREIGN KEY (child_id) REFERENCES children (id) ON DELETE CASCADE

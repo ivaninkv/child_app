@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/timeline/timeline_bloc.dart';
+import '../bloc/photos/photos_bloc.dart';
 import '../../data/models/models.dart';
 import '../../data/datasources/database_helper.dart';
 import '../widgets/timeline_card.dart';
@@ -21,6 +22,21 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final DatabaseHelper _db = DatabaseHelper.instance;
   String _searchQuery = '';
+  Key _galleryKey = UniqueKey();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final location = GoRouterState.of(context).uri.toString();
+    if (location.contains('tab=1')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _currentIndex = 1;
+          _galleryKey = UniqueKey();
+        });
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,36 +159,113 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _TimelineTab(childId: child.id, searchQuery: _searchQuery);
       case 1:
-        return _PhotosTab(childId: child.id);
+        return _PhotosTab(galleryKey: _galleryKey);
       case 2:
-        return _ParametersTab(childId: child.id);
+        return const _ParametersTab();
       default:
         return const SizedBox();
     }
   }
 
   Widget _buildSearchField() {
-    return SizedBox(
-      height: 40,
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Поиск...',
-          prefixIcon: const Icon(Icons.search, size: 20),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18),
-                  onPressed: () => setState(() => _searchQuery = ''),
-                )
-              : null,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 40,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Поиск...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () => setState(() => _searchQuery = ''),
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+              ),
+              onChanged: (value) => setState(() => _searchQuery = value),
+            ),
           ),
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         ),
-        onChanged: (value) => setState(() => _searchQuery = value),
+        const SizedBox(width: 8),
+        _buildChildSelectorDropdown(context.read<AppBloc>().state),
+      ],
+    );
+  }
+
+  Widget _buildChildSelectorDropdown(AppState appState) {
+    if (appState.children.isEmpty || appState.selectedChild == null) {
+      return const SizedBox();
+    }
+    return PopupMenuButton<String>(
+      initialValue: appState.selectedChild!.id,
+      onSelected: (value) {
+        context.read<AppBloc>().add(AppSelectChild(value));
+      },
+      itemBuilder: (context) => appState.children.map((child) {
+        return PopupMenuItem<String>(
+          value: child.id,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundImage: child.avatarPath != null
+                    ? FileImage(File(child.avatarPath!))
+                    : null,
+                child: child.avatarPath == null
+                    ? Text(child.name[0].toUpperCase())
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Text(child.name),
+              if (child.id == appState.selectedChild!.id)
+                const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Icon(Icons.check, size: 18),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 12,
+              backgroundImage: appState.selectedChild!.avatarPath != null
+                  ? FileImage(File(appState.selectedChild!.avatarPath!))
+                  : null,
+              child: appState.selectedChild!.avatarPath == null
+                  ? Text(
+                      appState.selectedChild!.name[0].toUpperCase(),
+                      style: const TextStyle(fontSize: 10),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              appState.selectedChild!.name,
+              style: const TextStyle(fontSize: 12),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -185,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _showAddEventDialog(context, child);
             break;
           case 1:
-            context.go('/photo/add');
+            context.go('/photo/add?fromTab=1');
             break;
           case 2:
             context.go('/parameter/add');
@@ -217,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: const Text('Добавить фото'),
                 onTap: () {
                   Navigator.pop(context);
-                  context.go('/photo/add');
+                  context.go('/photo/add?fromTab=0');
                 },
               ),
               ListTile(
@@ -344,23 +437,41 @@ class _TimelineTabState extends State<_TimelineTab> {
 }
 
 class _PhotosTab extends StatelessWidget {
-  final String childId;
+  final Key galleryKey;
 
-  const _PhotosTab({required this.childId});
+  const _PhotosTab({required this.galleryKey});
 
   @override
   Widget build(BuildContext context) {
-    return const PhotoGalleryScreen();
+    return BlocBuilder<AppBloc, AppState>(
+      builder: (context, appState) {
+        final childId = appState.selectedChild?.id;
+        if (childId == null) {
+          return const Center(child: Text('Выберите ребенка'));
+        }
+        return BlocBuilder<PhotosBloc, PhotosState>(
+          builder: (context, photosState) {
+            return PhotoGalleryScreen(key: galleryKey, childId: childId);
+          },
+        );
+      },
+    );
   }
 }
 
 class _ParametersTab extends StatelessWidget {
-  final String childId;
-
-  const _ParametersTab({required this.childId});
+  const _ParametersTab();
 
   @override
   Widget build(BuildContext context) {
-    return const GrowthScreen();
+    return BlocBuilder<AppBloc, AppState>(
+      builder: (context, appState) {
+        final childId = appState.selectedChild?.id;
+        if (childId == null) {
+          return const Center(child: Text('Выберите ребенка'));
+        }
+        return GrowthScreen(childId: childId);
+      },
+    );
   }
 }

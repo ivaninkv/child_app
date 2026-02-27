@@ -13,8 +13,9 @@ import '../../data/datasources/database_helper.dart';
 
 class PhotoFormScreen extends StatefulWidget {
   final String? photoId;
+  final int? fromTab;
 
-  const PhotoFormScreen({super.key, this.photoId});
+  const PhotoFormScreen({super.key, this.photoId, this.fromTab});
 
   @override
   State<PhotoFormScreen> createState() => _PhotoFormScreenState();
@@ -275,12 +276,30 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
   }
 
   Future<void> _save() async {
-    final childId = context.read<AppBloc>().state.selectedChild!.id;
+    final appState = context.read<AppBloc>().state;
+    if (appState.selectedChild == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Сначала выберите ребенка')));
+      return;
+    }
+
+    if (_imagePath == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Выберите фото')));
+      return;
+    }
+
+    final childId = appState.selectedChild!.id;
     final isNewPhoto = !isEditing || _existingPhoto == null;
 
     String? thumbnailPath;
     if (!isEditing || _existingPhoto == null) {
       thumbnailPath = await _generateThumbnail(_imagePath!);
+      if (thumbnailPath == null) {
+        thumbnailPath = _imagePath;
+      }
     }
 
     if (isEditing && _existingPhoto != null) {
@@ -303,9 +322,19 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
     context.read<TimelineBloc>().add(TimelineRefresh(childId));
 
     if (isNewPhoto) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (mounted) {
+        if (widget.fromTab != null) {
+          context.go('/?tab=${widget.fromTab}');
+        } else {
+          context.go('/');
+        }
+      }
     } else {
-      context.pop();
+      if (widget.fromTab != null) {
+        context.go('/?tab=${widget.fromTab}');
+      } else {
+        context.pop();
+      }
     }
   }
 }

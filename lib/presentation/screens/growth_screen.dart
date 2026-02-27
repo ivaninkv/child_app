@@ -7,7 +7,9 @@ import '../bloc/app/app_bloc.dart';
 import '../../data/models/models.dart';
 
 class GrowthScreen extends StatefulWidget {
-  const GrowthScreen({super.key});
+  final String? childId;
+
+  const GrowthScreen({super.key, this.childId});
 
   @override
   State<GrowthScreen> createState() => _GrowthScreenState();
@@ -21,16 +23,31 @@ class _GrowthScreenState extends State<GrowthScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    final childId = context.read<AppBloc>().state.selectedChild?.id;
-    if (childId != null) {
-      context.read<ParametersBloc>().add(ParametersLoad(childId));
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final childId =
+          widget.childId ?? context.read<AppBloc>().state.selectedChild?.id;
+      if (childId != null) {
+        context.read<ParametersBloc>().add(ParametersLoad(childId));
+      }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant GrowthScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId) {
+      final childId =
+          widget.childId ?? context.read<AppBloc>().state.selectedChild?.id;
+      if (childId != null) {
+        context.read<ParametersBloc>().add(ParametersLoad(childId));
+      }
+    }
   }
 
   @override

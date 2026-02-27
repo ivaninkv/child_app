@@ -227,7 +227,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
         context.go('/event/edit/${_item!.id}');
         break;
       case TimelineItemType.photo:
-        context.go('/photo/edit/${_item!.id}');
+        context.go('/photo/edit/${_item!.id}?fromTab=0');
         break;
       case TimelineItemType.parameter:
         context.go('/parameter/edit/${_item!.id}');

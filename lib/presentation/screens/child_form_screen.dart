@@ -196,7 +196,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       context.read<AppBloc>().add(AppRefreshChildren());
 
       if (isNewChild) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        context.go('/');
       } else {
         context.pop();
       }

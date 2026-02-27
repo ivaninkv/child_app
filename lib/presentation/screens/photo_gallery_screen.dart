@@ -8,7 +8,9 @@ import '../bloc/app/app_bloc.dart';
 import '../../data/models/models.dart';
 
 class PhotoGalleryScreen extends StatefulWidget {
-  const PhotoGalleryScreen({super.key});
+  final String? childId;
+
+  const PhotoGalleryScreen({super.key, this.childId});
 
   @override
   State<PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
@@ -19,12 +21,29 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   final _allTags = <String>[];
   bool _isSelectionMode = false;
   final _selectedPhotos = <String>{};
+  String? _lastChildId;
 
   @override
   void initState() {
     super.initState();
-    final childId = context.read<AppBloc>().state.selectedChild?.id;
-    if (childId != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPhotos();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant PhotoGalleryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId) {
+      _loadPhotos();
+    }
+  }
+
+  void _loadPhotos() {
+    final childId =
+        widget.childId ?? context.read<AppBloc>().state.selectedChild?.id;
+    if (childId != null && childId != _lastChildId) {
+      _lastChildId = childId;
       context.read<PhotosBloc>().add(PhotosLoad(childId));
     }
   }
@@ -157,7 +176,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                     ),
                     const SizedBox(height: 8),
                     FilledButton(
-                      onPressed: () => context.go('/photo/add'),
+                      onPressed: () => context.go('/photo/add?fromTab=1'),
                       child: const Text('Добавить фото'),
                     ),
                   ],
@@ -165,43 +184,47 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
               );
             }
 
-            return Column(
+            return Stack(
               children: [
-                if (_selectedTag != null)
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Chip(
-                      label: Text(_selectedTag!),
-                      onDeleted: () => setState(() => _selectedTag = null),
-                    ),
-                  ),
-                Expanded(
-                  child: GridView.builder(
-                    padding: const EdgeInsets.all(8),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 4,
-                          mainAxisSpacing: 4,
+                Column(
+                  children: [
+                    if (_selectedTag != null)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Chip(
+                          label: Text(_selectedTag!),
+                          onDeleted: () => setState(() => _selectedTag = null),
                         ),
-                    itemCount: photos.length,
-                    itemBuilder: (context, index) {
-                      final photo = photos[index];
-                      return _PhotoThumbnail(
-                        photo: photo,
-                        onTap: () {
-                          if (_isSelectionMode) {
-                            _toggleSelection(photo.id);
-                          } else {
-                            context.go('/photo/viewer/$index');
-                          }
+                      ),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(8),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 4,
+                              mainAxisSpacing: 4,
+                            ),
+                        itemCount: photos.length,
+                        itemBuilder: (context, index) {
+                          final photo = photos[index];
+                          return _PhotoThumbnail(
+                            photo: photo,
+                            onTap: () {
+                              if (_isSelectionMode) {
+                                _toggleSelection(photo.id);
+                              } else {
+                                context.go('/photo/viewer/$index?fromTab=1');
+                              }
+                            },
+                            onLongPress: () => _enterSelectionMode(photo.id),
+                            isSelected: _selectedPhotos.contains(photo.id),
+                            isSelectionMode: _isSelectionMode,
+                          );
                         },
-                        onLongPress: () => _enterSelectionMode(photo.id),
-                        isSelected: _selectedPhotos.contains(photo.id),
-                        isSelectionMode: _isSelectionMode,
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
@@ -211,21 +234,9 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
         },
       ),
       floatingActionButton: _isSelectionMode
-          ? (_selectedPhotos.isNotEmpty
-                ? FloatingActionButton.extended(
-                    backgroundColor: Colors.red,
-                    onPressed: () {
-                      final state = context.read<PhotosBloc>().state;
-                      if (state is PhotosLoaded) {
-                        _deleteSelectedPhotos(state.photos);
-                      }
-                    },
-                    icon: const Icon(Icons.delete),
-                    label: Text('Удалить (${_selectedPhotos.length})'),
-                  )
-                : null)
+          ? null
           : FloatingActionButton(
-              onPressed: () => context.go('/photo/add'),
+              onPressed: () => context.go('/photo/add?fromTab=1'),
               child: const Icon(Icons.add_a_photo),
             ),
     );
