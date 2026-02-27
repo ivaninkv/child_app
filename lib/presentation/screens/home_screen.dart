@@ -204,71 +204,87 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _TimelineTab extends StatelessWidget {
+class _TimelineTab extends StatefulWidget {
   final String childId;
 
   const _TimelineTab({required this.childId});
 
   @override
+  State<_TimelineTab> createState() => _TimelineTabState();
+}
+
+class _TimelineTabState extends State<_TimelineTab> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<TimelineBloc>().add(TimelineLoad(widget.childId));
+  }
+
+  @override
+  void didUpdateWidget(covariant _TimelineTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.childId != widget.childId) {
+      context.read<TimelineBloc>().add(TimelineLoad(widget.childId));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => TimelineBloc()..add(TimelineLoad(childId)),
-      child: BlocBuilder<TimelineBloc, TimelineState>(
-        builder: (context, state) {
-          if (state is TimelineLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return BlocBuilder<TimelineBloc, TimelineState>(
+      builder: (context, state) {
+        if (state is TimelineLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (state is TimelineLoaded) {
-            if (state.items.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.timeline, size: 64, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Пока нет записей',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: () => context.go('/event/add'),
-                      child: const Text('Добавить первое событие'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<TimelineBloc>().add(TimelineRefresh(childId));
-              },
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: state.items.length,
-                itemBuilder: (context, index) {
-                  final item = state.items[index];
-                  return TimelineCard(
-                    item: item,
-                    onTap: () {
-                      final typeStr = item.type.name;
-                      context.go('/timeline/$typeStr/${item.id}');
-                    },
-                  );
-                },
+        if (state is TimelineLoaded) {
+          if (state.items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.timeline, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Пока нет записей',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => context.go('/event/add'),
+                    child: const Text('Добавить первое событие'),
+                  ),
+                ],
               ),
             );
           }
 
-          if (state is TimelineError) {
-            return Center(child: Text('Ошибка: ${state.message}'));
-          }
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<TimelineBloc>().add(TimelineRefresh(widget.childId));
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: state.items.length,
+              itemBuilder: (context, index) {
+                final item = state.items[index];
+                return TimelineCard(
+                  item: item,
+                  onTap: () {
+                    final typeStr = item.type.name;
+                    context.go('/timeline/$typeStr/${item.id}');
+                  },
+                );
+              },
+            ),
+          );
+        }
 
-          return const SizedBox();
-        },
-      ),
+        if (state is TimelineError) {
+          return Center(child: Text('Ошибка: ${state.message}'));
+        }
+
+        return const SizedBox();
+      },
     );
   }
 }
