@@ -7,6 +7,8 @@ import '../bloc/timeline/timeline_bloc.dart';
 import '../../data/models/models.dart';
 import '../../data/datasources/database_helper.dart';
 import '../widgets/timeline_card.dart';
+import 'photo_gallery_screen.dart';
+import 'growth_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -348,24 +350,7 @@ class _PhotosTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.photo_library, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
-            'Галерея фотографий',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: () => context.go('/photos'),
-            child: const Text('Открыть галерею'),
-          ),
-        ],
-      ),
-    );
+    return const PhotoGalleryScreen();
   }
 }
 
@@ -376,23 +361,6 @@ class _ParametersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.straighten, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
-            'Параметры развития',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          FilledButton(
-            onPressed: () => context.go('/growth'),
-            child: const Text('Смотреть графики'),
-          ),
-        ],
-      ),
-    );
+    return const GrowthScreen();
   }
 }
