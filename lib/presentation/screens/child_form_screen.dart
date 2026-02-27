@@ -73,12 +73,26 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Center(
+                    child: GestureDetector(
+                      onTap: _pickAvatar,
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundImage: _avatarPath != null
+                            ? FileImage(File(_avatarPath!))
+                            : null,
+                        child: _avatarPath == null
+                            ? const Icon(Icons.add_a_photo, size: 30)
+                            : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
                     child: Text(
                       'Нажмите для выбора фото',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                   ),
-                  const SizedBox(height: 8),
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _nameController,
