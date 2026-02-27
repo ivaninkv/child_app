@@ -10,6 +10,7 @@ import '../screens/settings_screen.dart';
 import '../screens/timeline_detail_screen.dart';
 import '../screens/growth_screen.dart';
 import '../screens/photo_gallery_screen.dart';
+import '../screens/photo_viewer_screen.dart';
 
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -85,6 +86,14 @@ class AppRouter {
           GoRoute(
             path: 'photos',
             builder: (context, state) => const PhotoGalleryScreen(),
+          ),
+          GoRoute(
+            path: 'photo/viewer/:index',
+            builder: (context, state) {
+              final index =
+                  int.tryParse(state.pathParameters['index'] ?? '0') ?? 0;
+              return PhotoViewerScreen(initialIndex: index);
+            },
           ),
           GoRoute(
             path: 'settings',

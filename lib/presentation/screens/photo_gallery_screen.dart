@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/photos/photos_bloc.dart';
+import '../bloc/timeline/timeline_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../../data/models/models.dart';
 
@@ -16,6 +17,8 @@ class PhotoGalleryScreen extends StatefulWidget {
 class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
   String? _selectedTag;
   final _allTags = <String>[];
+  bool _isSelectionMode = false;
+  final _selectedPhotos = <String>{};
 
   @override
   void initState() {
@@ -26,18 +29,99 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Фотогалерея'),
+  void _toggleSelection(String photoId) {
+    setState(() {
+      if (_selectedPhotos.contains(photoId)) {
+        _selectedPhotos.remove(photoId);
+      } else {
+        _selectedPhotos.add(photoId);
+      }
+    });
+  }
+
+  void _enterSelectionMode(String photoId) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedPhotos.add(photoId);
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedPhotos.clear();
+    });
+  }
+
+  void _deleteSelectedPhotos(List<Photo> photos) {
+    if (_selectedPhotos.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Удалить ${_selectedPhotos.length} фото?'),
+        content: const Text('Это действие нельзя отменить.'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              final childId = context.read<AppBloc>().state.selectedChild!.id;
+              for (final photoId in _selectedPhotos) {
+                context.read<PhotosBloc>().add(
+                  PhotosDelete(id: photoId, childId: childId),
+                );
+              }
+              context.read<TimelineBloc>().add(TimelineRefresh(childId));
+              Navigator.pop(ctx);
+              _exitSelectionMode();
+            },
+            child: const Text('Удалить'),
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _isSelectionMode
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _exitSelectionMode,
+              ),
+              title: Text('Выбрано: ${_selectedPhotos.length}'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    final state = context.read<PhotosBloc>().state;
+                    if (state is PhotosLoaded) {
+                      _deleteSelectedPhotos(state.photos);
+                    }
+                  },
+                ),
+              ],
+            )
+          : AppBar(
+              title: const Text('Фотогалерея'),
+              actions: [
+                if (_selectedTag != null)
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => setState(() => _selectedTag = null),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.filter_list),
+                  onPressed: _showFilterDialog,
+                ),
+              ],
+            ),
       body: BlocBuilder<PhotosBloc, PhotosState>(
         builder: (context, state) {
           if (state is PhotosLoading) {
@@ -105,7 +189,16 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                       final photo = photos[index];
                       return _PhotoThumbnail(
                         photo: photo,
-                        onTap: () => _showPhotoDetail(photo),
+                        onTap: () {
+                          if (_isSelectionMode) {
+                            _toggleSelection(photo.id);
+                          } else {
+                            context.go('/photo/viewer/$index');
+                          }
+                        },
+                        onLongPress: () => _enterSelectionMode(photo.id),
+                        isSelected: _selectedPhotos.contains(photo.id),
+                        isSelectionMode: _isSelectionMode,
                       );
                     },
                   ),
@@ -117,10 +210,24 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           return const SizedBox();
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/photo/add'),
-        child: const Icon(Icons.add_a_photo),
-      ),
+      floatingActionButton: _isSelectionMode
+          ? (_selectedPhotos.isNotEmpty
+                ? FloatingActionButton.extended(
+                    backgroundColor: Colors.red,
+                    onPressed: () {
+                      final state = context.read<PhotosBloc>().state;
+                      if (state is PhotosLoaded) {
+                        _deleteSelectedPhotos(state.photos);
+                      }
+                    },
+                    icon: const Icon(Icons.delete),
+                    label: Text('Удалить (${_selectedPhotos.length})'),
+                  )
+                : null)
+          : FloatingActionButton(
+              onPressed: () => context.go('/photo/add'),
+              child: const Icon(Icons.add_a_photo),
+            ),
     );
   }
 
@@ -174,103 +281,68 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
       ),
     );
   }
-
-  void _showPhotoDetail(Photo photo) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: Image.file(
-                File(photo.imagePath),
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: Icon(Icons.broken_image, size: 64),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${photo.date.day}.${photo.date.month}.${photo.date.year}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  if (photo.tags.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: photo.tags
-                          .map(
-                            (tag) => Chip(
-                              label: Text(tag),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Закрыть'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          context.go('/timeline/photo/${photo.id}');
-                        },
-                        child: const Text('Подробнее'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _PhotoThumbnail extends StatelessWidget {
   final Photo photo;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final bool isSelected;
+  final bool isSelectionMode;
 
-  const _PhotoThumbnail({required this.photo, required this.onTap});
+  const _PhotoThumbnail({
+    required this.photo,
+    required this.onTap,
+    required this.onLongPress,
+    required this.isSelected,
+    required this.isSelectionMode,
+  });
 
   @override
   Widget build(BuildContext context) {
     final imageFile = File(photo.thumbnailPath ?? photo.imagePath);
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.file(
-          imageFile,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image),
-            );
-          },
-        ),
+      onLongPress: onLongPress,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Image.file(
+              imageFile,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.broken_image),
+                );
+              },
+            ),
+          ),
+          if (isSelectionMode)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? Colors.blue
+                      : Colors.white.withValues(alpha: 0.7),
+                  border: Border.all(
+                    color: isSelected ? Colors.blue : Colors.grey,
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    : null,
+              ),
+            ),
+        ],
       ),
     );
   }
