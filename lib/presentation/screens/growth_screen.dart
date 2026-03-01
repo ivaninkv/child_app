@@ -241,7 +241,7 @@ class _GrowthScreenState extends State<GrowthScreen>
                   final index = spot.x.toInt();
                   final date = filtered[index].date;
                   return LineTooltipItem(
-                    '${isHeight ? "Рост" : "Вес"}: ${spot.y}${isHeight ? " см" : " кг"}\n${date.day}.${date.month}.${date.year}',
+                    '${isHeight ? "Рост" : "Вес"}: ${spot.y}${isHeight ? " см" : " кг"}\n${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}',
                     const TextStyle(color: Colors.white),
                   );
                 }).toList();

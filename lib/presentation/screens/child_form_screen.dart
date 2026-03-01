@@ -137,7 +137,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                         leading: const Icon(Icons.cake),
                         title: Text(
                           _birthDate != null
-                              ? '${_birthDate!.day}.${_birthDate!.month}.${_birthDate!.year}'
+                              ? '${_birthDate!.day.toString().padLeft(2, '0')}.${_birthDate!.month.toString().padLeft(2, '0')}.${_birthDate!.year}'
                               : 'Дата рождения *',
                         ),
                         trailing: const Icon(Icons.calendar_today),

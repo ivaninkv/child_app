@@ -263,7 +263,7 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${photo.date.day}.${photo.date.month}.${photo.date.year}',
+                '${photo.date.day.toString().padLeft(2, '0')}.${photo.date.month.toString().padLeft(2, '0')}.${photo.date.year}',
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
               if (photo.tags.isNotEmpty) ...[
