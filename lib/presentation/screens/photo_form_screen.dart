@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:exif/exif.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -225,6 +226,11 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
       final image = await picker.pickImage(source: source);
       if (image != null) {
         setState(() => _imagePath = image.path);
+
+        final year = await _extractYearFromImage(image.path);
+        if (year != null && !_selectedTags.contains(year.toString())) {
+          setState(() => _selectedTags.add(year.toString()));
+        }
       }
     }
   }
@@ -238,6 +244,42 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
     );
     if (date != null) {
       setState(() => _date = date);
+    }
+  }
+
+  Future<int?> _extractYearFromImage(String imagePath) async {
+    try {
+      final file = File(imagePath);
+      final bytes = await file.readAsBytes();
+      final data = await readExifFromBytes(bytes);
+
+      if (data.isEmpty) return null;
+
+      final dateOriginal = data['EXIF DateTimeOriginal'];
+      final dateTime = data['EXIF DateTime'];
+      final dateDigitized = data['EXIF DateTimeDigitized'];
+
+      String? dateString;
+      if (dateOriginal != null) {
+        dateString = dateOriginal.toString();
+      } else if (dateDigitized != null) {
+        dateString = dateDigitized.toString();
+      } else if (dateTime != null) {
+        dateString = dateTime.toString();
+      }
+
+      if (dateString == null) return null;
+
+      final parts = dateString.split(' ');
+      if (parts.isEmpty) return null;
+
+      final datePart = parts[0];
+      final yearPart = datePart.split(':');
+      if (yearPart.isEmpty) return null;
+
+      return int.tryParse(yearPart[0]);
+    } catch (e) {
+      return null;
     }
   }
 

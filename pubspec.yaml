@@ -2,7 +2,7 @@ name: child_app
 description: "Приложение для записи моментов жизни ребенка"
 publish_to: 'none'
 
-version: 1.2.0
+version: 1.2.1
 
 environment:
   sdk: ^3.11.0
@@ -20,6 +20,7 @@ dependencies:
   # Images
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0
+  exif: ^3.3.0
   
   # Charts
   fl_chart: ^0.70.2
