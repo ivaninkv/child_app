@@ -25,6 +25,9 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   late PageController _pageController;
   late int _currentIndex;
   bool _showInfo = false;
+  final Map<int, TransformationController> _transformationControllers = {};
+  final Map<int, AnimationController> _animationControllers = {};
+  final _targetScale = 2.5;
 
   @override
   void initState() {
@@ -33,9 +36,77 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     _pageController = PageController(initialPage: widget.initialIndex);
   }
 
+  TransformationController _getController(int index) {
+    if (!_transformationControllers.containsKey(index)) {
+      _transformationControllers[index] = TransformationController();
+    }
+    return _transformationControllers[index]!;
+  }
+
+  AnimationController _getAnimationController(int index) {
+    if (!_animationControllers.containsKey(index)) {
+      _animationControllers[index] = AnimationController(
+        duration: const Duration(milliseconds: 300),
+        vsync: Navigator.of(context),
+      );
+    }
+    return _animationControllers[index]!;
+  }
+
+  void _handleDoubleTap(int index, TapDownDetails details, Size size) {
+    final controller = _getController(index);
+    final animationController = _getAnimationController(index);
+    animationController.stop();
+
+    final Matrix4 matrix = controller.value;
+    final double currentScale = matrix.getMaxScaleOnAxis();
+
+    final Matrix4 endMatrix;
+    if (currentScale > 1.1) {
+      endMatrix = Matrix4.identity();
+    } else {
+      endMatrix = _getZoomMatrix(details.localPosition, size);
+    }
+
+    final animation = Matrix4Tween(begin: controller.value, end: endMatrix)
+        .animate(
+          CurvedAnimation(parent: animationController, curve: Curves.easeInOut),
+        );
+
+    animation.addListener(() {
+      controller.value = animation.value;
+    });
+
+    animationController.forward(from: 0);
+  }
+
+  Matrix4 _getZoomMatrix(Offset tapPosition, Size size) {
+    final scale = _targetScale;
+    final x = tapPosition.dx;
+    final y = tapPosition.dy;
+
+    // Translate to center zoom at tap position
+    final translateX = x * (1 - scale);
+    final translateY = y * (1 - scale);
+
+    final matrix = Matrix4.identity();
+    matrix.setEntry(0, 0, scale);
+    matrix.setEntry(1, 1, scale);
+    matrix.setEntry(2, 2, 1.0);
+    matrix.setEntry(0, 3, translateX);
+    matrix.setEntry(1, 3, translateY);
+    return matrix;
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
+    for (final controller in _transformationControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _animationControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -68,27 +139,40 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                   },
                   itemBuilder: (context, index) {
                     final photo = photos[index];
-                    return InteractiveViewer(
-                      minScale: 0.5,
-                      maxScale: 4.0,
-                      child: Center(
-                        child: Image.file(
-                          File(photo.imagePath),
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[800],
-                              child: const Center(
-                                child: Icon(
-                                  Icons.broken_image,
-                                  color: Colors.white,
-                                  size: 64,
-                                ),
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final size = Size(
+                          constraints.maxWidth,
+                          constraints.maxHeight,
+                        );
+                        return GestureDetector(
+                          onDoubleTapDown: (details) =>
+                              _handleDoubleTap(index, details, size),
+                          child: InteractiveViewer(
+                            transformationController: _getController(index),
+                            minScale: 0.5,
+                            maxScale: 4.0,
+                            child: Center(
+                              child: Image.file(
+                                File(photo.imagePath),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey[800],
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white,
+                                        size: 64,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                      ),
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
