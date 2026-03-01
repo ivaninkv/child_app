@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/datasources/database_helper.dart';
 import '../../data/models/models.dart';
+import '../../core/utils/date_utils.dart' as date_utils;
 
 class TimelineCard extends StatelessWidget {
   final TimelineItem item;
@@ -214,6 +215,6 @@ class TimelineCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+    return date_utils.DateUtils.formatDateShort(date);
   }
 }
