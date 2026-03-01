@@ -417,8 +417,12 @@ class _TimelineTabState extends State<_TimelineTab> {
                 return TimelineCard(
                   item: item,
                   onTap: () {
-                    final typeStr = item.type.name;
-                    context.go('/timeline/$typeStr/${item.id}');
+                    if (item.type == TimelineItemType.photo) {
+                      context.go('/photo/fullscreen/${item.id}');
+                    } else {
+                      final typeStr = item.type.name;
+                      context.go('/timeline/$typeStr/${item.id}');
+                    }
                   },
                 );
               },

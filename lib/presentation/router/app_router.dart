@@ -11,6 +11,7 @@ import '../screens/timeline_detail_screen.dart';
 import '../screens/growth_screen.dart';
 import '../screens/photo_gallery_screen.dart';
 import '../screens/photo_viewer_screen.dart';
+import '../screens/photo_fullscreen_screen.dart';
 
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -104,6 +105,13 @@ class AppRouter {
                 state.uri.queryParameters['fromTab'] ?? '',
               );
               return PhotoViewerScreen(initialIndex: index, fromTab: fromTab);
+            },
+          ),
+          GoRoute(
+            path: 'photo/fullscreen/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return PhotoFullscreenScreen(photoId: id);
             },
           ),
           GoRoute(
