@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/models.dart';
+import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/photos/photos_bloc.dart';
 import '../bloc/timeline/timeline_bloc.dart';
 import '../bloc/app/app_bloc.dart';
@@ -284,7 +285,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${photo.date.day.toString().padLeft(2, '0')}.${photo.date.month.toString().padLeft(2, '0')}.${photo.date.year}',
+                date_utils.DateUtils.formatDateShort(photo.date),
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
               if (photo.tags.isNotEmpty) ...[

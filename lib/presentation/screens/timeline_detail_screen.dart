@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/timeline/timeline_bloc.dart';
 import '../bloc/events/events_bloc.dart';
 import '../bloc/photos/photos_bloc.dart';
@@ -133,7 +134,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
         Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
         Text(
-          'Дата: ${event.date.day.toString().padLeft(2, '0')}.${event.date.month.toString().padLeft(2, '0')}.${event.date.year}',
+          'Дата: ${date_utils.DateUtils.formatDateShort(event.date)}',
           style: const TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 16),
@@ -164,7 +165,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Дата: ${photo.date.day.toString().padLeft(2, '0')}.${photo.date.month.toString().padLeft(2, '0')}.${photo.date.year}',
+                'Дата: ${date_utils.DateUtils.formatDateShort(photo.date)}',
                 style: const TextStyle(color: Colors.grey),
               ),
               if (photo.tags.isNotEmpty) ...[
@@ -192,7 +193,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Дата: ${param.date.day.toString().padLeft(2, '0')}.${param.date.month.toString().padLeft(2, '0')}.${param.date.year}',
+          'Дата: ${date_utils.DateUtils.formatDateShort(param.date)}',
           style: const TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 24),

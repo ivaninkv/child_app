@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/children/children_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../../data/models/models.dart';
@@ -137,7 +138,9 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                         leading: const Icon(Icons.cake),
                         title: Text(
                           _birthDate != null
-                              ? '${_birthDate!.day.toString().padLeft(2, '0')}.${_birthDate!.month.toString().padLeft(2, '0')}.${_birthDate!.year}'
+                              ? date_utils.DateUtils.formatDateShort(
+                                  _birthDate!,
+                                )
                               : 'Дата рождения *',
                         ),
                         trailing: const Icon(Icons.calendar_today),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/parameters/parameters_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../../data/models/models.dart';
@@ -241,7 +242,7 @@ class _GrowthScreenState extends State<GrowthScreen>
                   final index = spot.x.toInt();
                   final date = filtered[index].date;
                   return LineTooltipItem(
-                    '${isHeight ? "Рост" : "Вес"}: ${spot.y}${isHeight ? " см" : " кг"}\n${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}',
+                    '${isHeight ? "Рост" : "Вес"}: ${spot.y}${isHeight ? " см" : " кг"}\n${date_utils.DateUtils.formatDateShort(date)}',
                     const TextStyle(color: Colors.white),
                   );
                 }).toList();

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/photos/photos_bloc.dart';
 import '../bloc/timeline/timeline_bloc.dart';
 import '../bloc/app/app_bloc.dart';
@@ -131,9 +132,7 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.calendar_today),
-                  title: Text(
-                    '${_date.day.toString().padLeft(2, '0')}.${_date.month.toString().padLeft(2, '0')}.${_date.year}',
-                  ),
+                  title: Text(date_utils.DateUtils.formatDateShort(_date)),
                   trailing: const Icon(Icons.edit),
                   onTap: _pickDate,
                 ),
