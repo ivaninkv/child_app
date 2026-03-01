@@ -114,7 +114,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.calendar_today),
-                    title: Text('${_date.day}.${_date.month}.${_date.year}'),
+                    title: Text(
+                      '${_date.day.toString().padLeft(2, '0')}.${_date.month.toString().padLeft(2, '0')}.${_date.year}',
+                    ),
                     trailing: const Icon(Icons.edit),
                     onTap: _pickDate,
                   ),

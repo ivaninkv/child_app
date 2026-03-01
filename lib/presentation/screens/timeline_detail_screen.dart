@@ -133,7 +133,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
         Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 8),
         Text(
-          'Дата: ${event.date.day}.${event.date.month}.${event.date.year}',
+          'Дата: ${event.date.day.toString().padLeft(2, '0')}.${event.date.month.toString().padLeft(2, '0')}.${event.date.year}',
           style: const TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 16),
@@ -164,7 +164,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Дата: ${photo.date.day}.${photo.date.month}.${photo.date.year}',
+                'Дата: ${photo.date.day.toString().padLeft(2, '0')}.${photo.date.month.toString().padLeft(2, '0')}.${photo.date.year}',
                 style: const TextStyle(color: Colors.grey),
               ),
               if (photo.tags.isNotEmpty) ...[
@@ -192,7 +192,7 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Дата: ${param.date.day}.${param.date.month}.${param.date.year}',
+          'Дата: ${param.date.day.toString().padLeft(2, '0')}.${param.date.month.toString().padLeft(2, '0')}.${param.date.year}',
           style: const TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 24),
