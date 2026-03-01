@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../bloc/app/app_bloc.dart';
 import '../bloc/reminders/reminders_bloc.dart';
 import '../../core/utils/notification_service.dart';
@@ -18,11 +19,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _db = DatabaseHelper.instance;
   final _notificationService = NotificationService();
   ReminderSettings? _reminderSettings;
+  PackageInfo? _packageInfo;
 
   @override
   void initState() {
     super.initState();
     _loadReminderSettings();
+    _loadPackageInfo();
+  }
+
+  Future<void> _loadPackageInfo() async {
+    final info = await PackageInfo.fromPlatform();
+    setState(() => _packageInfo = info);
   }
 
   Future<void> _loadReminderSettings() async {
@@ -97,10 +105,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           const _SectionHeader(title: 'О приложении'),
-          const ListTile(
-            leading: Icon(Icons.info),
-            title: Text('Child App'),
-            subtitle: Text('Версия 1.0.0'),
+          ListTile(
+            leading: const Icon(Icons.info),
+            title: const Text('Child App'),
+            subtitle: Text(
+              _packageInfo != null
+                  ? 'Версия ${_packageInfo!.version}'
+                  : 'Загрузка...',
+            ),
           ),
         ],
       ),
