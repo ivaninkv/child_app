@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,6 +27,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
   Gender _gender = Gender.male;
   String? _avatarPath;
   bool _isLoading = false;
+  bool _isSaving = false;
   Child? _existingChild;
 
   bool get isEditing => widget.childId != null;
@@ -65,89 +67,113 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       appBar: AppBar(
         title: Text(isEditing ? 'Редактировать' : 'Добавить ребенка'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Center(
-                    child: GestureDetector(
-                      onTap: _pickAvatar,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: _avatarPath != null
-                            ? FileImage(File(_avatarPath!))
-                            : null,
-                        child: _avatarPath == null
-                            ? const Icon(Icons.add_a_photo, size: 30)
-                            : null,
+      body: Stack(
+        children: [
+          _isSaving
+              ? Container(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.8),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Добавляем ${_nameController.text}...',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox(),
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Center(
+                        child: GestureDetector(
+                          onTap: _pickAvatar,
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _avatarPath != null
+                                ? FileImage(File(_avatarPath!))
+                                : null,
+                            child: _avatarPath == null
+                                ? const Icon(Icons.add_a_photo, size: 30)
+                                : null,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'Нажмите для выбора фото',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Имя *',
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Введите имя';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.cake),
-                    title: Text(
-                      _birthDate != null
-                          ? '${_birthDate!.day}.${_birthDate!.month}.${_birthDate!.year}'
-                          : 'Дата рождения *',
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: _pickBirthDate,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Пол *'),
-                  const SizedBox(height: 8),
-                  SegmentedButton<Gender>(
-                    segments: const [
-                      ButtonSegment(
-                        value: Gender.male,
-                        label: Text('Мальчик'),
-                        icon: Icon(Icons.male),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          'Нажмите для выбора фото',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
                       ),
-                      ButtonSegment(
-                        value: Gender.female,
-                        label: Text('Девочка'),
-                        icon: Icon(Icons.female),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Имя *',
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Введите имя';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.cake),
+                        title: Text(
+                          _birthDate != null
+                              ? '${_birthDate!.day}.${_birthDate!.month}.${_birthDate!.year}'
+                              : 'Дата рождения *',
+                        ),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: _pickBirthDate,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Пол *'),
+                      const SizedBox(height: 8),
+                      SegmentedButton<Gender>(
+                        segments: const [
+                          ButtonSegment(
+                            value: Gender.male,
+                            label: Text('Мальчик'),
+                            icon: Icon(Icons.male),
+                          ),
+                          ButtonSegment(
+                            value: Gender.female,
+                            label: Text('Девочка'),
+                            icon: Icon(Icons.female),
+                          ),
+                        ],
+                        selected: {_gender},
+                        onSelectionChanged: (value) {
+                          setState(() => _gender = value.first);
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      FilledButton(
+                        onPressed: _save,
+                        child: Text(isEditing ? 'Сохранить' : 'Добавить'),
                       ),
                     ],
-                    selected: {_gender},
-                    onSelectionChanged: (value) {
-                      setState(() => _gender = value.first);
-                    },
                   ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: _save,
-                    child: Text(isEditing ? 'Сохранить' : 'Добавить'),
-                  ),
-                ],
-              ),
-            ),
+                ),
+        ],
+      ),
     );
   }
 
@@ -193,11 +219,11 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
           ),
         );
       }
-      context.read<AppBloc>().add(AppRefreshChildren());
 
       if (isNewChild) {
-        context.go('/');
+        _waitForChildAndNavigate();
       } else {
+        context.read<AppBloc>().add(AppRefreshChildren());
         context.pop();
       }
     } else if (_birthDate == null) {
@@ -205,5 +231,51 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Выберите дату рождения')));
     }
+  }
+
+  void _waitForChildAndNavigate() {
+    setState(() => _isSaving = true);
+
+    final childrenBloc = context.read<ChildrenBloc>();
+    final appBloc = context.read<AppBloc>();
+
+    StreamSubscription? childrenSubscription;
+    StreamSubscription? appSubscription;
+
+    childrenSubscription = childrenBloc.stream.listen((state) {
+      if (state is ChildrenLoaded) {
+        childrenSubscription?.cancel();
+        appBloc.add(AppRefreshChildren());
+
+        appSubscription = appBloc.stream.listen((appState) {
+          if (appState.children.isNotEmpty) {
+            appSubscription?.cancel();
+            if (mounted) {
+              context.go('/');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Ребёнок "${_nameController.text}" добавлен'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          }
+        });
+      }
+    });
+
+    Future.delayed(const Duration(seconds: 5), () {
+      childrenSubscription?.cancel();
+      appSubscription?.cancel();
+      if (mounted && _isSaving) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось добавить ребёнка. Попробуйте снова.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
   }
 }

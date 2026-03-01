@@ -1,17 +1,53 @@
-# child_app
+# Child App
 
-A new Flutter project.
+Приложение для записи и отслеживания важных моментов жизни вашего ребёнка.
 
-## Getting Started
+## Возможности
 
-This project is a starting point for a Flutter application.
+### 📸 Фотогалерея
+- Добавление фотографий с тегами
+- Просмотр фотографий в полноэкранном режиме
+- Фильтрация по тегам
 
-A few resources to get you started if this is your first Flutter project:
+### 📊 Параметры роста
+- Запись измерений веса и роста
+- Отслеживание динамики роста на графиках
+- История всех измерений
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### 📅 Лента событий
+- Запись важных событий с описанием
+- Хронологическая лента всех записей
+- Поиск по событиям
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 👶 Управление профилями
+- Добавление нескольких детей
+- Индивидуальные профили с фото и датой рождения
+- Быстрое переключение между профилями
+
+### ⏰ Напоминания
+- Настройка напоминаний о замере параметров
+- Настраиваемая периодичность (раз в неделю, две недели, месяц)
+- Выбор удобного времени уведомлений
+
+### 🎨 Темы оформления
+- Светлая тема
+- Тёмная тема
+- Системная тема (автоматически)
+
+## Технологии
+
+- **Flutter** — кроссплатформенный фреймворк
+- **BLoC** — управление состоянием
+- **Go Router** — навигация
+- **SQLite** — локальное хранение данных
+
+## Установка
+
+Для сборки APK выполните:
+
+```bash
+flutter pub get
+flutter build apk --release
+```
+
+APK файл появится в `build/app/outputs/flutter-apk/`
