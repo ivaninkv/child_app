@@ -2,13 +2,15 @@ name: child_app
 description: "Приложение для записи моментов жизни ребенка"
 publish_to: 'none'
 
-version: 1.2.2
+version: 1.2.3
 
 environment:
   sdk: ^3.11.0
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
