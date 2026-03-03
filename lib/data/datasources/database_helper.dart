@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/models.dart';
@@ -345,6 +346,23 @@ class DatabaseHelper {
 
   Future<int> deleteEvent(String id) async {
     final db = await database;
+
+    // Get event to access photo IDs
+    final event = await getEvent(id);
+    if (event != null) {
+      // Delete associated photos
+      for (final photoId in event.photoIds) {
+        final photo = await getPhoto(photoId);
+        if (photo != null) {
+          await _deletePhotoFiles(photo);
+          await deletePhoto(photoId);
+        }
+      }
+
+      // Delete event-photo associations
+      await db.delete('event_photos', where: 'event_id = ?', whereArgs: [id]);
+    }
+
     return db.delete('events', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -420,6 +438,24 @@ class DatabaseHelper {
   Future<int> deletePhoto(String id) async {
     final db = await database;
     return db.delete('photos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> _deletePhotoFiles(Photo photo) async {
+    try {
+      final imageFile = File(photo.imagePath);
+      if (await imageFile.exists()) {
+        await imageFile.delete();
+      }
+
+      if (photo.thumbnailPath != null) {
+        final thumbnailFile = File(photo.thumbnailPath!);
+        if (await thumbnailFile.exists()) {
+          await thumbnailFile.delete();
+        }
+      }
+    } catch (e) {
+      // Ignore file deletion errors
+    }
   }
 
   Future<List<String>> getAllTags() async {
@@ -531,6 +567,27 @@ class DatabaseHelper {
 
   Future<int> deleteParameter(String id) async {
     final db = await database;
+
+    // Get parameter to access photo IDs
+    final parameter = await getParameter(id);
+    if (parameter != null) {
+      // Delete associated photos
+      for (final photoId in parameter.photoIds) {
+        final photo = await getPhoto(photoId);
+        if (photo != null) {
+          await _deletePhotoFiles(photo);
+          await deletePhoto(photoId);
+        }
+      }
+
+      // Delete parameter-photo associations
+      await db.delete(
+        'parameter_photos',
+        where: 'parameter_id = ?',
+        whereArgs: [id],
+      );
+    }
+
     return db.delete('parameters', where: 'id = ?', whereArgs: [id]);
   }
 
