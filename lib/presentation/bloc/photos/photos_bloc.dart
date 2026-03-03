@@ -112,7 +112,7 @@ class PhotosBloc extends Bloc<PhotosEvent, PhotosState> {
     emit(PhotosLoading());
     _currentChildId = event.childId;
     try {
-      final photos = await _db.getPhotosForChild(event.childId);
+      final photos = await _db.getPhotosWithRelations(event.childId);
       final tags = await _db.getAllTags();
       emit(PhotosLoaded(photos, availableTags: tags));
     } catch (e) {
@@ -133,7 +133,7 @@ class PhotosBloc extends Bloc<PhotosEvent, PhotosState> {
       );
 
       await _db.insertPhoto(photo);
-      final photos = await _db.getPhotosForChild(event.childId);
+      final photos = await _db.getPhotosWithRelations(event.childId);
       final tags = await _db.getAllTags();
       emit(PhotosLoaded(photos, availableTags: tags));
     } catch (e) {
@@ -145,7 +145,7 @@ class PhotosBloc extends Bloc<PhotosEvent, PhotosState> {
     try {
       await _db.updatePhoto(event.photo);
       if (_currentChildId != null) {
-        final photos = await _db.getPhotosForChild(_currentChildId!);
+        final photos = await _db.getPhotosWithRelations(_currentChildId!);
         final tags = await _db.getAllTags();
         emit(PhotosLoaded(photos, availableTags: tags));
       }
@@ -157,7 +157,7 @@ class PhotosBloc extends Bloc<PhotosEvent, PhotosState> {
   Future<void> _onDelete(PhotosDelete event, Emitter<PhotosState> emit) async {
     try {
       await _db.deletePhoto(event.id);
-      final photos = await _db.getPhotosForChild(event.childId);
+      final photos = await _db.getPhotosWithRelations(event.childId);
       final tags = await _db.getAllTags();
       emit(PhotosLoaded(photos, availableTags: tags));
     } catch (e) {

@@ -343,6 +343,69 @@ class _PhotoThumbnail extends StatelessWidget {
                     : null,
               ),
             ),
+          if (photo.relatedTitle != null)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  border: Border(
+                    left: BorderSide(
+                      color: photo.isFromEvent
+                          ? const Color(0xFF1976D2)
+                          : const Color(0xFFEF6C00),
+                      width: 6,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Контейнер для иконки (переход в заметку/замер)
+                    GestureDetector(
+                      onTap: () {
+                        if (photo.eventId != null) {
+                          context.go('/timeline/event/${photo.eventId}');
+                        } else if (photo.parameterId != null) {
+                          context.go(
+                            '/timeline/parameter/${photo.parameterId}',
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Icon(
+                          photo.isFromEvent
+                              ? Icons.description
+                              : Icons.straighten,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        photo.relatedTitle!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

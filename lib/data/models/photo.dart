@@ -9,6 +9,14 @@ class Photo extends Equatable {
   final List<String> tags;
   final DateTime createdAt;
 
+  // Новые поля для отображения в галерее
+  final String? relatedTitle;
+  final bool isFromEvent;
+
+  // ID для навигации
+  final String? eventId;
+  final String? parameterId;
+
   const Photo({
     required this.id,
     required this.childId,
@@ -17,6 +25,10 @@ class Photo extends Equatable {
     required this.date,
     required this.tags,
     required this.createdAt,
+    this.relatedTitle,
+    this.isFromEvent = false,
+    this.eventId,
+    this.parameterId,
   });
 
   Photo copyWith({
@@ -27,6 +39,10 @@ class Photo extends Equatable {
     DateTime? date,
     List<String>? tags,
     DateTime? createdAt,
+    String? relatedTitle,
+    bool? isFromEvent,
+    String? eventId,
+    String? parameterId,
   }) {
     return Photo(
       id: id ?? this.id,
@@ -36,6 +52,10 @@ class Photo extends Equatable {
       date: date ?? this.date,
       tags: tags ?? this.tags,
       createdAt: createdAt ?? this.createdAt,
+      relatedTitle: relatedTitle ?? this.relatedTitle,
+      isFromEvent: isFromEvent ?? this.isFromEvent,
+      eventId: eventId ?? this.eventId,
+      parameterId: parameterId ?? this.parameterId,
     );
   }
 
@@ -71,5 +91,9 @@ class Photo extends Equatable {
     date,
     tags,
     createdAt,
+    relatedTitle,
+    isFromEvent,
+    eventId,
+    parameterId,
   ];
 }
