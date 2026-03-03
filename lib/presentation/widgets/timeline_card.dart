@@ -85,6 +85,9 @@ class TimelineCard extends StatelessWidget {
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                   ),
+                  const Spacer(),
+                  if (event.photoIds.isNotEmpty)
+                    _buildPhotoIndicator(context, event.photoIds.length),
                 ],
               ),
             ],
@@ -188,16 +191,52 @@ class TimelineCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Text(
-                _formatDate(param.date),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+              Row(
+                children: [
+                  Text(
+                    _formatDate(param.date),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                  ),
+                  const Spacer(),
+                  if (param.photoIds.isNotEmpty)
+                    _buildPhotoIndicator(context, param.photoIds.length),
+                ],
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPhotoIndicator(BuildContext context, int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.photo,
+            size: 14,
+            color: Theme.of(context).colorScheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'x$count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
