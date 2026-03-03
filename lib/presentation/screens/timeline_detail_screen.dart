@@ -4,9 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/timeline/timeline_bloc.dart';
-import '../bloc/events/events_bloc.dart';
-import '../bloc/photos/photos_bloc.dart';
-import '../bloc/parameters/parameters_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../../data/datasources/database_helper.dart';
 import '../../data/models/models.dart';
@@ -126,21 +123,89 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
 
   Widget _buildEventContent() {
     final event = _item!.event!;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (event.category != null) Chip(label: Text(event.category!)),
-        const SizedBox(height: 16),
-        Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        Text(
-          'Дата: ${date_utils.DateUtils.formatDateShort(event.date)}',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 16),
-        Text(event.description),
-      ],
+    return FutureBuilder<List<Photo>>(
+      future: _loadAttachedPhotos(event.photoIds),
+      builder: (context, snapshot) {
+        final attachedPhotos = snapshot.data ?? [];
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (event.category != null) Chip(label: Text(event.category!)),
+            const SizedBox(height: 16),
+            Text(event.title, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(
+              'Дата: ${date_utils.DateUtils.formatDateShort(event.date)}',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            Text(event.description),
+            if (attachedPhotos.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Прикрепленные фото',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: attachedPhotos.length,
+                  itemBuilder: (context, index) {
+                    final photo = attachedPhotos[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          final photoIds = attachedPhotos
+                              .map((p) => p.id)
+                              .join(',');
+                          context.push(
+                            '/photo/view/${photo.id}?eventId=${event.id}&photoIds=$photoIds',
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(photo.thumbnailPath ?? photo.imagePath),
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 120,
+                                height: 120,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(Icons.broken_image, size: 32),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
+  }
+
+  Future<List<Photo>> _loadAttachedPhotos(List<String> photoIds) async {
+    final photos = <Photo>[];
+    for (final photoId in photoIds) {
+      final photo = await _db.getPhoto(photoId);
+      if (photo != null) {
+        photos.add(photo);
+      }
+    }
+    return photos;
   }
 
   Widget _buildPhotoContent() {
@@ -189,25 +254,86 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
 
   Widget _buildParameterContent() {
     final param = _item!.parameter!;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          'Дата: ${date_utils.DateUtils.formatDateShort(param.date)}',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-        if (param.height != null)
-          _buildMetricCard('Рост', '${param.height} см', Icons.height),
-        if (param.weight != null)
-          _buildMetricCard('Вес', '${param.weight} кг', Icons.monitor_weight),
-        if (param.shoeSize != null)
-          _buildMetricCard(
-            'Размер ноги',
-            param.shoeSize.toString(),
-            Icons.sports_handball,
-          ),
-      ],
+    return FutureBuilder<List<Photo>>(
+      future: _loadAttachedPhotos(param.photoIds),
+      builder: (context, snapshot) {
+        final attachedPhotos = snapshot.data ?? [];
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Дата: ${date_utils.DateUtils.formatDateShort(param.date)}',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            if (param.height != null)
+              _buildMetricCard('Рост', '${param.height} см', Icons.height),
+            if (param.weight != null)
+              _buildMetricCard(
+                'Вес',
+                '${param.weight} кг',
+                Icons.monitor_weight,
+              ),
+            if (param.shoeSize != null)
+              _buildMetricCard(
+                'Размер ноги',
+                param.shoeSize.toString(),
+                Icons.sports_handball,
+              ),
+            if (attachedPhotos.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Прикрепленные фото',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: attachedPhotos.length,
+                  itemBuilder: (context, index) {
+                    final photo = attachedPhotos[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          final photoIds = attachedPhotos
+                              .map((p) => p.id)
+                              .join(',');
+                          context.push(
+                            '/photo/view/${photo.id}?eventId=${param.id}&photoIds=$photoIds',
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(photo.thumbnailPath ?? photo.imagePath),
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 120,
+                                height: 120,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(Icons.broken_image, size: 32),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 

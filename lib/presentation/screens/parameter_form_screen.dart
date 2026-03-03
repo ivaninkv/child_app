@@ -1,6 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/parameters/parameters_bloc.dart';
 import '../bloc/timeline/timeline_bloc.dart';
@@ -27,6 +32,8 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
   DateTime _date = DateTime.now();
   bool _isLoading = false;
   Parameter? _existingParameter;
+  List<String> _selectedPhotoIds = [];
+  List<Photo> _attachedPhotos = [];
 
   bool get isEditing => widget.parameterId != null;
 
@@ -42,6 +49,15 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
     setState(() => _isLoading = true);
     final param = await _db.getParameter(widget.parameterId!);
     if (param != null) {
+      // Load attached photos
+      final photos = <Photo>[];
+      for (final photoId in param.photoIds) {
+        final photo = await _db.getPhoto(photoId);
+        if (photo != null) {
+          photos.add(photo);
+        }
+      }
+
       setState(() {
         _existingParameter = param;
         _date = param.date;
@@ -51,6 +67,8 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
           _weightController.text = param.weight.toString();
         if (param.shoeSize != null)
           _shoeSizeController.text = param.shoeSize.toString();
+        _selectedPhotoIds = List<String>.from(param.photoIds);
+        _attachedPhotos = photos;
         _isLoading = false;
       });
     }
@@ -144,6 +162,8 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 16),
+                  _buildPhotoAttachmentSection(),
                   const SizedBox(height: 32),
                   FilledButton(
                     onPressed: _save,
@@ -194,6 +214,7 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
           height: height,
           weight: weight,
           shoeSize: shoeSize,
+          photoIds: _selectedPhotoIds,
         );
         context.read<ParametersBloc>().add(ParametersUpdate(updatedParam));
       } else {
@@ -204,6 +225,7 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
             height: height,
             weight: weight,
             shoeSize: shoeSize,
+            photoIds: _selectedPhotoIds,
           ),
         );
       }
@@ -215,5 +237,156 @@ class _ParameterFormScreenState extends State<ParameterFormScreen> {
         context.pop();
       }
     }
+  }
+
+  Widget _buildPhotoAttachmentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Фотографии',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (_attachedPhotos.isNotEmpty) ...[
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _attachedPhotos.length,
+              itemBuilder: (context, index) {
+                final photo = _attachedPhotos[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(photo.thumbnailPath ?? photo.imagePath),
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          color: Colors.white,
+                          onPressed: () => _removePhoto(photo.id),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        OutlinedButton.icon(
+          onPressed: _pickPhotos,
+          icon: const Icon(Icons.add_photo_alternate),
+          label: const Text('Добавить фото'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickPhotos() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera),
+              title: const Text('Камера'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Галерея (множественный выбор)'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source != null) {
+      if (source == ImageSource.camera) {
+        // Single photo from camera
+        final image = await picker.pickImage(source: source);
+        if (image != null) {
+          await _savePhotoAndAddToParameter(image.path);
+        }
+      } else {
+        // Multiple photos from gallery
+        final images = await picker.pickMultiImage();
+        if (images.isNotEmpty) {
+          for (final image in images) {
+            await _savePhotoAndAddToParameter(image.path);
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _savePhotoAndAddToParameter(String imagePath) async {
+    final appState = context.read<AppBloc>().state;
+    if (appState.selectedChild == null) return;
+
+    final childId = appState.selectedChild!.id;
+    final thumbnailPath = await _generateThumbnail(imagePath);
+
+    final photo = Photo(
+      id: const Uuid().v4(),
+      childId: childId,
+      imagePath: imagePath,
+      thumbnailPath: thumbnailPath ?? imagePath,
+      date: DateTime.now(),
+      tags: [],
+      createdAt: DateTime.now(),
+    );
+
+    await _db.insertPhoto(photo);
+
+    setState(() {
+      _selectedPhotoIds.add(photo.id);
+      _attachedPhotos.add(photo);
+    });
+  }
+
+  Future<String?> _generateThumbnail(String imagePath) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final thumbnailDir = Directory('${dir.path}/thumbnails');
+    if (!await thumbnailDir.exists()) {
+      await thumbnailDir.create(recursive: true);
+    }
+
+    final fileName = 'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final thumbnailPath = '${thumbnailDir.path}/$fileName';
+
+    final result = await FlutterImageCompress.compressAndGetFile(
+      imagePath,
+      thumbnailPath,
+      quality: 70,
+      minWidth: 400,
+      minHeight: 400,
+    );
+
+    return result?.path;
+  }
+
+  void _removePhoto(String photoId) {
+    setState(() {
+      _selectedPhotoIds.remove(photoId);
+      _attachedPhotos.removeWhere((photo) => photo.id == photoId);
+    });
   }
 }

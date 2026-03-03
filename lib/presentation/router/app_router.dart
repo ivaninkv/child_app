@@ -51,22 +51,18 @@ class AppRouter {
             },
           ),
           GoRoute(
-            path: 'photo/add',
-            builder: (context, state) {
-              final fromTab = int.tryParse(
-                state.uri.queryParameters['fromTab'] ?? '',
-              );
-              return PhotoFormScreen(fromTab: fromTab);
-            },
-          ),
-          GoRoute(
             path: 'photo/edit/:id',
             builder: (context, state) {
               final id = state.pathParameters['id']!;
               final fromTab = int.tryParse(
                 state.uri.queryParameters['fromTab'] ?? '',
               );
-              return PhotoFormScreen(photoId: id, fromTab: fromTab);
+              final returnRoute = state.uri.queryParameters['returnRoute'];
+              return PhotoFormScreen(
+                photoId: id,
+                fromTab: fromTab,
+                returnRoute: returnRoute,
+              );
             },
           ),
           GoRoute(
@@ -112,6 +108,25 @@ class AppRouter {
             builder: (context, state) {
               final id = state.pathParameters['id']!;
               return PhotoFullscreenScreen(photoId: id);
+            },
+          ),
+          GoRoute(
+            path: 'photo/view/:id',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              final eventId = state.uri.queryParameters['eventId'];
+              final photoIdsStr = state.uri.queryParameters['photoIds'];
+              final photoIds =
+                  photoIdsStr
+                      ?.split(',')
+                      .where((id) => id.isNotEmpty)
+                      .toList() ??
+                  [];
+              return PhotoFullscreenScreen(
+                photoId: id,
+                eventId: eventId,
+                photoIds: photoIds,
+              );
             },
           ),
           GoRoute(

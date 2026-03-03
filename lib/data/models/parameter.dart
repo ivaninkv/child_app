@@ -8,6 +8,7 @@ class Parameter extends Equatable {
   final double? weight;
   final double? shoeSize;
   final DateTime createdAt;
+  final List<String> photoIds;
 
   const Parameter({
     required this.id,
@@ -17,6 +18,7 @@ class Parameter extends Equatable {
     this.weight,
     this.shoeSize,
     required this.createdAt,
+    this.photoIds = const [],
   });
 
   Parameter copyWith({
@@ -27,6 +29,7 @@ class Parameter extends Equatable {
     double? weight,
     double? shoeSize,
     DateTime? createdAt,
+    List<String>? photoIds,
   }) {
     return Parameter(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class Parameter extends Equatable {
       weight: weight ?? this.weight,
       shoeSize: shoeSize ?? this.shoeSize,
       createdAt: createdAt ?? this.createdAt,
+      photoIds: photoIds ?? this.photoIds,
     );
   }
 
@@ -48,10 +52,15 @@ class Parameter extends Equatable {
       'weight': weight,
       'shoe_size': shoeSize,
       'created_at': createdAt.millisecondsSinceEpoch,
+      'photo_ids': photoIds.join(','),
     };
   }
 
   factory Parameter.fromMap(Map<String, dynamic> map) {
+    final photoIdsStr = map['photo_ids'] as String?;
+    final photoIds =
+        photoIdsStr?.split(',').where((id) => id.isNotEmpty).toList() ?? [];
+
     return Parameter(
       id: map['id'] as String,
       childId: map['child_id'] as String,
@@ -60,6 +69,7 @@ class Parameter extends Equatable {
       weight: map['weight'] as double?,
       shoeSize: map['shoe_size'] as double?,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+      photoIds: photoIds,
     );
   }
 
@@ -72,5 +82,6 @@ class Parameter extends Equatable {
     weight,
     shoeSize,
     createdAt,
+    photoIds,
   ];
 }

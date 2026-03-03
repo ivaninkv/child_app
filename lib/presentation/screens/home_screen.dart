@@ -270,15 +270,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFab(BuildContext context, Child child) {
+  Widget? _buildFab(BuildContext context, Child child) {
+    // Hide FAB on photo gallery tab (tab 1)
+    if (_currentIndex == 1) {
+      return null;
+    }
+
     return FloatingActionButton(
       onPressed: () {
         switch (_currentIndex) {
           case 0:
             _showAddEventDialog(context, child);
-            break;
-          case 1:
-            context.go('/photo/add?fromTab=1');
             break;
           case 2:
             context.go('/parameter/add');
@@ -305,14 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   context.go('/event/add');
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Добавить фото'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.go('/photo/add?fromTab=0');
-                },
-              ),
+
               ListTile(
                 leading: const Icon(Icons.straighten),
                 title: const Text('Замерить параметры'),

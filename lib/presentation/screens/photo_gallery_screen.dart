@@ -174,11 +174,6 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
                           ? 'Нет фото с тегом "$_selectedTag"'
                           : 'Нет фотографий',
                     ),
-                    const SizedBox(height: 8),
-                    FilledButton(
-                      onPressed: () => context.go('/photo/add?fromTab=1'),
-                      child: const Text('Добавить фото'),
-                    ),
                   ],
                 ),
               );
@@ -233,12 +228,7 @@ class _PhotoGalleryScreenState extends State<PhotoGalleryScreen> {
           return const SizedBox();
         },
       ),
-      floatingActionButton: _isSelectionMode
-          ? null
-          : FloatingActionButton(
-              onPressed: () => context.go('/photo/add?fromTab=1'),
-              child: const Icon(Icons.add_a_photo),
-            ),
+      floatingActionButton: null,
     );
   }
 
