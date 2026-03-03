@@ -148,47 +148,43 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: attachedPhotos.length,
-                  itemBuilder: (context, index) {
-                    final photo = attachedPhotos[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () {
-                          final photoIds = attachedPhotos
-                              .map((p) => p.id)
-                              .join(',');
-                          context.push(
-                            '/photo/view/${photo.id}?eventId=${event.id}&photoIds=$photoIds',
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                ),
+                itemCount: attachedPhotos.length,
+                itemBuilder: (context, index) {
+                  final photo = attachedPhotos[index];
+                  return GestureDetector(
+                    onTap: () {
+                      final photoIds = attachedPhotos
+                          .map((p) => p.id)
+                          .join(',');
+                      context.push(
+                        '/photo/view/${photo.id}?eventId=${event.id}&photoIds=$photoIds',
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.file(
+                        File(photo.thumbnailPath ?? photo.imagePath),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 32),
+                            ),
                           );
                         },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(photo.thumbnailPath ?? photo.imagePath),
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 120,
-                                height: 120,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(Icons.broken_image, size: 32),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ],
           ],
@@ -288,47 +284,43 @@ class _TimelineDetailScreenState extends State<TimelineDetailScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: attachedPhotos.length,
-                  itemBuilder: (context, index) {
-                    final photo = attachedPhotos[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () {
-                          final photoIds = attachedPhotos
-                              .map((p) => p.id)
-                              .join(',');
-                          context.push(
-                            '/photo/view/${photo.id}?eventId=${param.id}&photoIds=$photoIds',
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                ),
+                itemCount: attachedPhotos.length,
+                itemBuilder: (context, index) {
+                  final photo = attachedPhotos[index];
+                  return GestureDetector(
+                    onTap: () {
+                      final photoIds = attachedPhotos
+                          .map((p) => p.id)
+                          .join(',');
+                      context.push(
+                        '/photo/view/${photo.id}?eventId=${param.id}&photoIds=$photoIds',
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.file(
+                        File(photo.thumbnailPath ?? photo.imagePath),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 32),
+                            ),
                           );
                         },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(photo.thumbnailPath ?? photo.imagePath),
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 120,
-                                height: 120,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(Icons.broken_image, size: 32),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ],
           ],
