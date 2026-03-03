@@ -402,6 +402,71 @@ class DatabaseHelper {
     return photos;
   }
 
+  Future<List<Photo>> getPhotosWithRelations(String childId) async {
+    final db = await database;
+
+    final result = await db.rawQuery(
+      '''
+      SELECT 
+        p.*,
+        e.id as event_id,
+        e.title as event_title,
+        pr.id as parameter_id,
+        strftime('%d.%m.%Y', pr.date / 1000, 'unixepoch') as param_date
+      FROM photos p
+      LEFT JOIN event_photos ep ON p.id = ep.photo_id
+      LEFT JOIN events e ON ep.event_id = e.id
+      LEFT JOIN parameter_photos pp ON p.id = pp.photo_id
+      LEFT JOIN parameters pr ON pp.parameter_id = pr.id
+      WHERE p.child_id = ?
+      GROUP BY p.id
+      ORDER BY p.date DESC
+    ''',
+      [childId],
+    );
+
+    final photos = <Photo>[];
+    for (final map in result) {
+      final tagsResult = await db.query(
+        'photo_tags',
+        columns: ['tag'],
+        where: 'photo_id = ?',
+        whereArgs: [map['id']],
+      );
+      final tags = tagsResult.map((t) => t['tag'] as String).toList();
+
+      String? relatedTitle;
+      bool isFromEvent = false;
+      String? eventId;
+      String? parameterId;
+
+      if (map['event_title'] != null) {
+        relatedTitle = map['event_title'] as String;
+        isFromEvent = true;
+        eventId = map['event_id'] as String?;
+      } else if (map['param_date'] != null) {
+        relatedTitle = map['param_date'] as String;
+        isFromEvent = false;
+        parameterId = map['parameter_id'] as String?;
+      }
+
+      // Обрезаем до 20 символов
+      if (relatedTitle != null && relatedTitle.length > 20) {
+        relatedTitle = '${relatedTitle.substring(0, 17)}...';
+      }
+
+      final photo = Photo.fromMap(map, tags: tags).copyWith(
+        relatedTitle: relatedTitle,
+        isFromEvent: isFromEvent,
+        eventId: eventId,
+        parameterId: parameterId,
+      );
+      photos.add(photo);
+    }
+
+    return photos;
+  }
+
   Future<Photo?> getPhoto(String id) async {
     final db = await database;
     final result = await db.query('photos', where: 'id = ?', whereArgs: [id]);
