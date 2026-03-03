@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -39,6 +39,56 @@ class DatabaseHelper {
       if (!hasThumbnailPath) {
         await db.execute('ALTER TABLE photos ADD COLUMN thumbnail_path TEXT');
       }
+    }
+    if (oldVersion < 4) {
+      // Добавляем таблицу event_photos для связи событий и фотографий
+      await db.execute('''
+        CREATE TABLE event_photos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id TEXT NOT NULL,
+          photo_id TEXT NOT NULL,
+          FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE,
+          FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX idx_event_photos_event_id ON event_photos (event_id)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_event_photos_photo_id ON event_photos (photo_id)',
+      );
+
+      // Добавляем колонку photo_ids в таблицу events для обратной совместимости
+      final result = await db.rawQuery("PRAGMA table_info(events)");
+      final hasPhotoIds = result.any((col) => col['name'] == 'photo_ids');
+      if (!hasPhotoIds) {
+        await db.execute('ALTER TABLE events ADD COLUMN photo_ids TEXT');
+      }
+    }
+    if (oldVersion < 5) {
+      // Добавляем колонку photo_ids в таблицу parameters
+      final result = await db.rawQuery("PRAGMA table_info(parameters)");
+      final hasPhotoIds = result.any((col) => col['name'] == 'photo_ids');
+      if (!hasPhotoIds) {
+        await db.execute('ALTER TABLE parameters ADD COLUMN photo_ids TEXT');
+      }
+
+      // Добавляем таблицу parameter_photos для связи замеров и фотографий
+      await db.execute('''
+        CREATE TABLE parameter_photos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          parameter_id TEXT NOT NULL,
+          photo_id TEXT NOT NULL,
+          FOREIGN KEY (parameter_id) REFERENCES parameters (id) ON DELETE CASCADE,
+          FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX idx_parameter_photos_parameter_id ON parameter_photos (parameter_id)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_parameter_photos_photo_id ON parameter_photos (photo_id)',
+      );
     }
   }
 
@@ -63,6 +113,7 @@ class DatabaseHelper {
         date INTEGER NOT NULL,
         category TEXT,
         created_at INTEGER NOT NULL,
+        photo_ids TEXT,
         FOREIGN KEY (child_id) REFERENCES children (id) ON DELETE CASCADE
       )
     ''');
@@ -97,6 +148,7 @@ class DatabaseHelper {
         weight REAL,
         shoe_size REAL,
         created_at INTEGER NOT NULL,
+        photo_ids TEXT,
         FOREIGN KEY (child_id) REFERENCES children (id) ON DELETE CASCADE
       )
     ''');
@@ -124,6 +176,40 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_parameters_date ON parameters (date)');
     await db.execute(
       'CREATE INDEX idx_photo_tags_photo_id ON photo_tags (photo_id)',
+    );
+
+    // Create event_photos table
+    await db.execute('''
+      CREATE TABLE event_photos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT NOT NULL,
+        photo_id TEXT NOT NULL,
+        FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE,
+        FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_event_photos_event_id ON event_photos (event_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_event_photos_photo_id ON event_photos (photo_id)',
+    );
+
+    // Create parameter_photos table
+    await db.execute('''
+      CREATE TABLE parameter_photos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parameter_id TEXT NOT NULL,
+        photo_id TEXT NOT NULL,
+        FOREIGN KEY (parameter_id) REFERENCES parameters (id) ON DELETE CASCADE,
+        FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_parameter_photos_parameter_id ON parameter_photos (parameter_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_parameter_photos_photo_id ON parameter_photos (photo_id)',
     );
   }
 
@@ -166,6 +252,15 @@ class DatabaseHelper {
   Future<String> insertEvent(Event event) async {
     final db = await database;
     await db.insert('events', event.toMap());
+
+    // Insert event-photo associations
+    for (final photoId in event.photoIds) {
+      await db.insert('event_photos', {
+        'event_id': event.id,
+        'photo_id': photoId,
+      });
+    }
+
     return event.id;
   }
 
@@ -177,24 +272,75 @@ class DatabaseHelper {
       whereArgs: [childId],
       orderBy: 'date DESC',
     );
-    return result.map((map) => Event.fromMap(map)).toList();
+
+    final events = <Event>[];
+    for (final eventMap in result) {
+      // Get photo IDs for this event
+      final photoIdsResult = await db.query(
+        'event_photos',
+        columns: ['photo_id'],
+        where: 'event_id = ?',
+        whereArgs: [eventMap['id']],
+      );
+      final photoIds = photoIdsResult
+          .map((r) => r['photo_id'] as String)
+          .toList();
+
+      // Create event with photo IDs - create a new map to avoid read-only issues
+      final updatedEventMap = Map<String, dynamic>.from(eventMap);
+      updatedEventMap['photo_ids'] = photoIds.join(',');
+      events.add(Event.fromMap(updatedEventMap));
+    }
+
+    return events;
   }
 
   Future<Event?> getEvent(String id) async {
     final db = await database;
     final result = await db.query('events', where: 'id = ?', whereArgs: [id]);
     if (result.isEmpty) return null;
-    return Event.fromMap(result.first);
+
+    // Get photo IDs for this event
+    final photoIdsResult = await db.query(
+      'event_photos',
+      columns: ['photo_id'],
+      where: 'event_id = ?',
+      whereArgs: [id],
+    );
+    final photoIds = photoIdsResult
+        .map((r) => r['photo_id'] as String)
+        .toList();
+
+    // Create event with photo IDs - create a new map to avoid read-only issues
+    final eventMap = Map<String, dynamic>.from(result.first);
+    eventMap['photo_ids'] = photoIds.join(',');
+
+    return Event.fromMap(eventMap);
   }
 
   Future<int> updateEvent(Event event) async {
     final db = await database;
-    return db.update(
+    await db.update(
       'events',
       event.toMap(),
       where: 'id = ?',
       whereArgs: [event.id],
     );
+
+    // Update event-photo associations
+    await db.delete(
+      'event_photos',
+      where: 'event_id = ?',
+      whereArgs: [event.id],
+    );
+    for (final photoId in event.photoIds) {
+      await db.insert('event_photos', {
+        'event_id': event.id,
+        'photo_id': photoId,
+      });
+    }
+
+    return 1;
   }
 
   Future<int> deleteEvent(String id) async {
@@ -288,6 +434,15 @@ class DatabaseHelper {
   Future<String> insertParameter(Parameter parameter) async {
     final db = await database;
     await db.insert('parameters', parameter.toMap());
+
+    // Insert parameter-photo associations
+    for (final photoId in parameter.photoIds) {
+      await db.insert('parameter_photos', {
+        'parameter_id': parameter.id,
+        'photo_id': photoId,
+      });
+    }
+
     return parameter.id;
   }
 
@@ -299,7 +454,27 @@ class DatabaseHelper {
       whereArgs: [childId],
       orderBy: 'date DESC',
     );
-    return result.map((map) => Parameter.fromMap(map)).toList();
+
+    final parameters = <Parameter>[];
+    for (final paramMap in result) {
+      // Get photo IDs for this parameter
+      final photoIdsResult = await db.query(
+        'parameter_photos',
+        columns: ['photo_id'],
+        where: 'parameter_id = ?',
+        whereArgs: [paramMap['id']],
+      );
+      final photoIds = photoIdsResult
+          .map((r) => r['photo_id'] as String)
+          .toList();
+
+      // Create parameter with photo IDs
+      final updatedParamMap = Map<String, dynamic>.from(paramMap);
+      updatedParamMap['photo_ids'] = photoIds.join(',');
+      parameters.add(Parameter.fromMap(updatedParamMap));
+    }
+
+    return parameters;
   }
 
   Future<Parameter?> getParameter(String id) async {
@@ -310,17 +485,48 @@ class DatabaseHelper {
       whereArgs: [id],
     );
     if (result.isEmpty) return null;
-    return Parameter.fromMap(result.first);
+
+    // Get photo IDs for this parameter
+    final photoIdsResult = await db.query(
+      'parameter_photos',
+      columns: ['photo_id'],
+      where: 'parameter_id = ?',
+      whereArgs: [id],
+    );
+    final photoIds = photoIdsResult
+        .map((r) => r['photo_id'] as String)
+        .toList();
+
+    // Create parameter with photo IDs
+    final paramMap = Map<String, dynamic>.from(result.first);
+    paramMap['photo_ids'] = photoIds.join(',');
+
+    return Parameter.fromMap(paramMap);
   }
 
   Future<int> updateParameter(Parameter parameter) async {
     final db = await database;
-    return db.update(
+    await db.update(
       'parameters',
       parameter.toMap(),
       where: 'id = ?',
       whereArgs: [parameter.id],
     );
+
+    // Update parameter-photo associations
+    await db.delete(
+      'parameter_photos',
+      where: 'parameter_id = ?',
+      whereArgs: [parameter.id],
+    );
+    for (final photoId in parameter.photoIds) {
+      await db.insert('parameter_photos', {
+        'parameter_id': parameter.id,
+        'photo_id': photoId,
+      });
+    }
+
+    return 1;
   }
 
   Future<int> deleteParameter(String id) async {
@@ -361,10 +567,9 @@ class DatabaseHelper {
     return db.delete('reminder_settings', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Get all timeline items for a child (events, photos, parameters merged and sorted)
+  // Get all timeline items for a child (events and parameters only, photos excluded)
   Future<List<TimelineItem>> getTimelineForChild(String childId) async {
     final events = await getEventsForChild(childId);
-    final photos = await getPhotosForChild(childId);
     final parameters = await getParametersForChild(childId);
 
     final timeline = <TimelineItem>[];
@@ -377,18 +582,6 @@ class DatabaseHelper {
           date: event.date,
           childId: childId,
           event: event,
-        ),
-      );
-    }
-
-    for (final photo in photos) {
-      timeline.add(
-        TimelineItem(
-          id: photo.id,
-          type: TimelineItemType.photo,
-          date: photo.date,
-          childId: childId,
-          photo: photo,
         ),
       );
     }

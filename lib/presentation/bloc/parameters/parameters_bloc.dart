@@ -27,6 +27,7 @@ class ParametersAdd extends ParametersEvent {
   final double? height;
   final double? weight;
   final double? shoeSize;
+  final List<String> photoIds;
 
   const ParametersAdd({
     required this.childId,
@@ -34,10 +35,18 @@ class ParametersAdd extends ParametersEvent {
     this.height,
     this.weight,
     this.shoeSize,
+    this.photoIds = const [],
   });
 
   @override
-  List<Object?> get props => [childId, date, height, weight, shoeSize];
+  List<Object?> get props => [
+    childId,
+    date,
+    height,
+    weight,
+    shoeSize,
+    photoIds,
+  ];
 }
 
 class ParametersUpdate extends ParametersEvent {
@@ -57,6 +66,29 @@ class ParametersDelete extends ParametersEvent {
 
   @override
   List<Object?> get props => [id, childId];
+}
+
+class ParametersAddPhoto extends ParametersEvent {
+  final String parameterId;
+  final String photoId;
+
+  const ParametersAddPhoto({required this.parameterId, required this.photoId});
+
+  @override
+  List<Object?> get props => [parameterId, photoId];
+}
+
+class ParametersRemovePhoto extends ParametersEvent {
+  final String parameterId;
+  final String photoId;
+
+  const ParametersRemovePhoto({
+    required this.parameterId,
+    required this.photoId,
+  });
+
+  @override
+  List<Object?> get props => [parameterId, photoId];
 }
 
 // State
@@ -119,6 +151,8 @@ class ParametersBloc extends Bloc<ParametersEvent, ParametersState> {
     on<ParametersAdd>(_onAdd);
     on<ParametersUpdate>(_onUpdate);
     on<ParametersDelete>(_onDelete);
+    on<ParametersAddPhoto>(_onAddPhoto);
+    on<ParametersRemovePhoto>(_onRemovePhoto);
   }
 
   Future<void> _onLoad(
@@ -147,6 +181,7 @@ class ParametersBloc extends Bloc<ParametersEvent, ParametersState> {
         weight: event.weight,
         shoeSize: event.shoeSize,
         createdAt: DateTime.now(),
+        photoIds: event.photoIds,
       );
 
       await _db.insertParameter(parameter);
@@ -180,6 +215,52 @@ class ParametersBloc extends Bloc<ParametersEvent, ParametersState> {
       await _db.deleteParameter(event.id);
       final parameters = await _db.getParametersForChild(event.childId);
       emit(ParametersLoaded(parameters));
+    } catch (e) {
+      emit(ParametersError(e.toString()));
+    }
+  }
+
+  Future<void> _onAddPhoto(
+    ParametersAddPhoto event,
+    Emitter<ParametersState> emit,
+  ) async {
+    try {
+      final existingParameter = await _db.getParameter(event.parameterId);
+      if (existingParameter != null) {
+        final updatedPhotoIds = List<String>.from(existingParameter.photoIds)
+          ..add(event.photoId);
+        final updatedParameter = existingParameter.copyWith(
+          photoIds: updatedPhotoIds,
+        );
+        await _db.updateParameter(updatedParameter);
+        final parameters = await _db.getParametersForChild(
+          existingParameter.childId,
+        );
+        emit(ParametersLoaded(parameters));
+      }
+    } catch (e) {
+      emit(ParametersError(e.toString()));
+    }
+  }
+
+  Future<void> _onRemovePhoto(
+    ParametersRemovePhoto event,
+    Emitter<ParametersState> emit,
+  ) async {
+    try {
+      final existingParameter = await _db.getParameter(event.parameterId);
+      if (existingParameter != null) {
+        final updatedPhotoIds = List<String>.from(existingParameter.photoIds)
+          ..remove(event.photoId);
+        final updatedParameter = existingParameter.copyWith(
+          photoIds: updatedPhotoIds,
+        );
+        await _db.updateParameter(updatedParameter);
+        final parameters = await _db.getParametersForChild(
+          existingParameter.childId,
+        );
+        emit(ParametersLoaded(parameters));
+      }
     } catch (e) {
       emit(ParametersError(e.toString()));
     }

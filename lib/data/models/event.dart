@@ -8,6 +8,7 @@ class Event extends Equatable {
   final DateTime date;
   final String? category;
   final DateTime createdAt;
+  final List<String> photoIds;
 
   const Event({
     required this.id,
@@ -17,6 +18,7 @@ class Event extends Equatable {
     required this.date,
     this.category,
     required this.createdAt,
+    this.photoIds = const [],
   });
 
   Event copyWith({
@@ -27,6 +29,7 @@ class Event extends Equatable {
     DateTime? date,
     String? category,
     DateTime? createdAt,
+    List<String>? photoIds,
   }) {
     return Event(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class Event extends Equatable {
       date: date ?? this.date,
       category: category ?? this.category,
       createdAt: createdAt ?? this.createdAt,
+      photoIds: photoIds ?? this.photoIds,
     );
   }
 
@@ -48,10 +52,15 @@ class Event extends Equatable {
       'date': date.millisecondsSinceEpoch,
       'category': category,
       'created_at': createdAt.millisecondsSinceEpoch,
+      'photo_ids': photoIds.join(','),
     };
   }
 
   factory Event.fromMap(Map<String, dynamic> map) {
+    final photoIdsStr = map['photo_ids'] as String?;
+    final photoIds =
+        photoIdsStr?.split(',').where((id) => id.isNotEmpty).toList() ?? [];
+
     return Event(
       id: map['id'] as String,
       childId: map['child_id'] as String,
@@ -60,6 +69,7 @@ class Event extends Equatable {
       date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
       category: map['category'] as String?,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+      photoIds: photoIds,
     );
   }
 
@@ -72,5 +82,6 @@ class Event extends Equatable {
     date,
     category,
     createdAt,
+    photoIds,
   ];
 }

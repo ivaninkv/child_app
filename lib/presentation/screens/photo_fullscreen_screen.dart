@@ -11,82 +11,112 @@ import '../bloc/app/app_bloc.dart';
 
 class PhotoFullscreenScreen extends StatefulWidget {
   final String photoId;
+  final String? eventId;
+  final List<String> photoIds;
 
-  const PhotoFullscreenScreen({super.key, required this.photoId});
+  const PhotoFullscreenScreen({
+    super.key,
+    required this.photoId,
+    this.eventId,
+    this.photoIds = const [],
+  });
 
   @override
   State<PhotoFullscreenScreen> createState() => _PhotoFullscreenScreenState();
 }
 
-class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
-    with SingleTickerProviderStateMixin {
+class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen> {
   final _db = DatabaseHelper.instance;
-  final _transformationController = TransformationController();
-  late AnimationController _animationController;
-  Animation<Matrix4>? _animation;
+  late PageController _pageController;
   bool _showInfo = false;
-  Photo? _photo;
   bool _isLoading = true;
-  bool _isZoomed = false;
   final _targetScale = 2.5;
+  int _currentPhotoIndex = 0;
+  List<Photo> _photos = [];
+  final Map<int, TransformationController> _transformationControllers = {};
+  final Map<int, AnimationController> _animationControllers = {};
 
   @override
   void initState() {
     super.initState();
-    _loadPhoto();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+    _loadPhotos();
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _transformationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadPhoto() async {
-    final photo = await _db.getPhoto(widget.photoId);
-    if (photo != null && mounted) {
+  Future<void> _loadPhotos() async {
+    // Load all photos for the event if photoIds are provided
+    if (widget.photoIds.isNotEmpty) {
+      final photos = <Photo>[];
+      for (final photoId in widget.photoIds) {
+        final photo = await _db.getPhoto(photoId);
+        if (photo != null) {
+          photos.add(photo);
+        }
+      }
       setState(() {
-        _photo = photo;
+        _photos = photos;
+        _currentPhotoIndex = photos.indexWhere((p) => p.id == widget.photoId);
+        if (_currentPhotoIndex == -1) _currentPhotoIndex = 0;
         _isLoading = false;
       });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
+      _pageController = PageController(initialPage: _currentPhotoIndex);
+    } else {
+      // Load single photo
+      final photo = await _db.getPhoto(widget.photoId);
+      if (photo != null && mounted) {
+        setState(() {
+          _photos = [photo];
+          _currentPhotoIndex = 0;
+          _isLoading = false;
+        });
+        _pageController = PageController(initialPage: 0);
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _handleDoubleTap(TapDownDetails details, Size size) {
-    _animationController.stop();
+  TransformationController _getController(int index) {
+    if (!_transformationControllers.containsKey(index)) {
+      _transformationControllers[index] = TransformationController();
+    }
+    return _transformationControllers[index]!;
+  }
+
+  AnimationController _getAnimationController(int index) {
+    if (!_animationControllers.containsKey(index)) {
+      _animationControllers[index] = AnimationController(
+        duration: const Duration(milliseconds: 300),
+        vsync: Navigator.of(context),
+      );
+    }
+    return _animationControllers[index]!;
+  }
+
+  void _handleDoubleTap(int index, TapDownDetails details, Size size) {
+    final controller = _getController(index);
+    final animationController = _getAnimationController(index);
+    animationController.stop();
+
+    final Matrix4 matrix = controller.value;
+    final double currentScale = matrix.getMaxScaleOnAxis();
 
     final Matrix4 endMatrix;
-    if (_isZoomed) {
+    if (currentScale > 1.1) {
       endMatrix = Matrix4.identity();
-      _isZoomed = false;
     } else {
       endMatrix = _getZoomMatrix(details.localPosition, size);
-      _isZoomed = true;
     }
 
-    _animation =
-        Matrix4Tween(
-          begin: _transformationController.value,
-          end: endMatrix,
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeInOut,
-          ),
+    final animation = Matrix4Tween(begin: controller.value, end: endMatrix)
+        .animate(
+          CurvedAnimation(parent: animationController, curve: Curves.easeInOut),
         );
 
-    _animation!.addListener(() {
-      _transformationController.value = _animation!.value;
+    animation.addListener(() {
+      controller.value = animation.value;
     });
 
-    _animationController.forward(from: 0);
+    animationController.forward(from: 0);
   }
 
   Matrix4 _getZoomMatrix(Offset tapPosition, Size size) {
@@ -95,7 +125,6 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
     final y = tapPosition.dy;
 
     // Translate to center zoom at tap position
-    // Formula: translate(tapX, tapY) * scale * translate(-tapX, -tapY)
     final translateX = x * (1 - scale);
     final translateY = y * (1 - scale);
 
@@ -108,6 +137,23 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
     return matrix;
   }
 
+  void _goBack() {
+    // Use pop() to return to the previous screen (event detail)
+    context.pop();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    for (final controller in _transformationControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _animationControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -117,7 +163,7 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
       );
     }
 
-    if (_photo == null) {
+    if (_photos.isEmpty) {
       return Scaffold(
         backgroundColor: Colors.black,
         body: Center(
@@ -142,47 +188,63 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
       );
     }
 
-    return _buildContent(_photo!);
+    return _buildContent();
   }
 
-  Widget _buildContent(Photo photo) {
+  Widget _buildContent() {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final size = Size(constraints.maxWidth, constraints.maxHeight);
-              return GestureDetector(
-                onTap: () => setState(() => _showInfo = !_showInfo),
-                onDoubleTapDown: (details) => _handleDoubleTap(details, size),
-                child: InteractiveViewer(
-                  transformationController: _transformationController,
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: Center(
-                    child: Image.file(
-                      File(photo.imagePath),
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[800],
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image,
-                              color: Colors.white,
-                              size: 64,
-                            ),
+          GestureDetector(
+            onTap: () => setState(() => _showInfo = !_showInfo),
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: _photos.length,
+              onPageChanged: (index) {
+                setState(() => _currentPhotoIndex = index);
+              },
+              itemBuilder: (context, index) {
+                final photo = _photos[index];
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = Size(
+                      constraints.maxWidth,
+                      constraints.maxHeight,
+                    );
+                    return GestureDetector(
+                      onDoubleTapDown: (details) =>
+                          _handleDoubleTap(index, details, size),
+                      child: InteractiveViewer(
+                        transformationController: _getController(index),
+                        minScale: 0.5,
+                        maxScale: 4.0,
+                        child: Center(
+                          child: Image.file(
+                            File(photo.imagePath),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[800],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.broken_image,
+                                    color: Colors.white,
+                                    size: 64,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-          if (_showInfo) _buildInfoPanel(photo),
+          if (_showInfo) _buildInfoPanel(),
           Positioned(
             top: 0,
             left: 0,
@@ -208,7 +270,14 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
                     children: [
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: _goBack,
+                      ),
+                      Text(
+                        '${_currentPhotoIndex + 1} / ${_photos.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                       ),
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -216,13 +285,24 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
                           IconButton(
                             icon: const Icon(Icons.edit, color: Colors.white),
                             onPressed: () {
-                              Navigator.of(context).pop();
-                              context.go('/photo/edit/${photo.id}?fromTab=0');
+                              final photo = _photos[_currentPhotoIndex];
+                              // Return to event detail screen after editing
+                              final returnRoute = widget.eventId != null
+                                  ? '/timeline/event/${widget.eventId}'
+                                  : null;
+                              if (returnRoute != null) {
+                                context.go(
+                                  '/photo/edit/${photo.id}?fromTab=0&returnRoute=$returnRoute',
+                                );
+                              } else {
+                                _goBack();
+                                context.go('/photo/edit/${photo.id}?fromTab=0');
+                              }
                             },
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.white),
-                            onPressed: () => _showDeleteDialog(photo),
+                            onPressed: () => _showDeleteDialog(),
                           ),
                         ],
                       ),
@@ -237,7 +317,8 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
     );
   }
 
-  Widget _buildInfoPanel(Photo photo) {
+  Widget _buildInfoPanel() {
+    final photo = _photos[_currentPhotoIndex];
     return Positioned(
       bottom: 0,
       left: 0,
@@ -300,7 +381,8 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
     );
   }
 
-  void _showDeleteDialog(Photo photo) {
+  void _showDeleteDialog() {
+    final photo = _photos[_currentPhotoIndex];
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -320,7 +402,7 @@ class _PhotoFullscreenScreenState extends State<PhotoFullscreenScreen>
               );
               context.read<TimelineBloc>().add(TimelineRefresh(childId));
               Navigator.pop(ctx);
-              Navigator.of(context).pop();
+              context.pop();
             },
             child: const Text('Удалить'),
           ),

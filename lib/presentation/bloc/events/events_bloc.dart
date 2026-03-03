@@ -27,6 +27,7 @@ class EventsAdd extends EventsEvent {
   final String description;
   final DateTime date;
   final String? category;
+  final List<String> photoIds;
 
   const EventsAdd({
     required this.childId,
@@ -34,10 +35,18 @@ class EventsAdd extends EventsEvent {
     required this.description,
     required this.date,
     this.category,
+    this.photoIds = const [],
   });
 
   @override
-  List<Object?> get props => [childId, title, description, date, category];
+  List<Object?> get props => [
+    childId,
+    title,
+    description,
+    date,
+    category,
+    photoIds,
+  ];
 }
 
 class EventsUpdate extends EventsEvent {
@@ -57,6 +66,26 @@ class EventsDelete extends EventsEvent {
 
   @override
   List<Object?> get props => [id, childId];
+}
+
+class EventsAddPhoto extends EventsEvent {
+  final String eventId;
+  final String photoId;
+
+  const EventsAddPhoto({required this.eventId, required this.photoId});
+
+  @override
+  List<Object?> get props => [eventId, photoId];
+}
+
+class EventsRemovePhoto extends EventsEvent {
+  final String eventId;
+  final String photoId;
+
+  const EventsRemovePhoto({required this.eventId, required this.photoId});
+
+  @override
+  List<Object?> get props => [eventId, photoId];
 }
 
 // State
@@ -101,6 +130,8 @@ class EventsBloc extends Bloc<EventsEvent, EventsState> {
     on<EventsAdd>(_onAdd);
     on<EventsUpdate>(_onUpdate);
     on<EventsDelete>(_onDelete);
+    on<EventsAddPhoto>(_onAddPhoto);
+    on<EventsRemovePhoto>(_onRemovePhoto);
   }
 
   Future<void> _onLoad(EventsLoad event, Emitter<EventsState> emit) async {
@@ -123,6 +154,7 @@ class EventsBloc extends Bloc<EventsEvent, EventsState> {
         date: event.date,
         category: event.category,
         createdAt: DateTime.now(),
+        photoIds: event.photoIds,
       );
 
       await _db.insertEvent(newEvent);
@@ -148,6 +180,44 @@ class EventsBloc extends Bloc<EventsEvent, EventsState> {
       await _db.deleteEvent(event.id);
       final events = await _db.getEventsForChild(event.childId);
       emit(EventsLoaded(events));
+    } catch (e) {
+      emit(EventsError(e.toString()));
+    }
+  }
+
+  Future<void> _onAddPhoto(
+    EventsAddPhoto event,
+    Emitter<EventsState> emit,
+  ) async {
+    try {
+      final existingEvent = await _db.getEvent(event.eventId);
+      if (existingEvent != null) {
+        final updatedPhotoIds = List<String>.from(existingEvent.photoIds)
+          ..add(event.photoId);
+        final updatedEvent = existingEvent.copyWith(photoIds: updatedPhotoIds);
+        await _db.updateEvent(updatedEvent);
+        final events = await _db.getEventsForChild(existingEvent.childId);
+        emit(EventsLoaded(events));
+      }
+    } catch (e) {
+      emit(EventsError(e.toString()));
+    }
+  }
+
+  Future<void> _onRemovePhoto(
+    EventsRemovePhoto event,
+    Emitter<EventsState> emit,
+  ) async {
+    try {
+      final existingEvent = await _db.getEvent(event.eventId);
+      if (existingEvent != null) {
+        final updatedPhotoIds = List<String>.from(existingEvent.photoIds)
+          ..remove(event.photoId);
+        final updatedEvent = existingEvent.copyWith(photoIds: updatedPhotoIds);
+        await _db.updateEvent(updatedEvent);
+        final events = await _db.getEventsForChild(existingEvent.childId);
+        emit(EventsLoaded(events));
+      }
     } catch (e) {
       emit(EventsError(e.toString()));
     }
