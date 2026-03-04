@@ -121,6 +121,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                       const SizedBox(height: 24),
                       TextFormField(
                         controller: _nameController,
+                        textCapitalization: TextCapitalization.words,
                         decoration: const InputDecoration(
                           labelText: 'Имя *',
                           prefixIcon: Icon(Icons.person),
@@ -206,7 +207,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
 
       if (isEditing && _existingChild != null) {
         final updatedChild = _existingChild!.copyWith(
-          name: _nameController.text,
+          name: _nameController.text.trim(),
           birthDate: _birthDate,
           gender: _gender,
           avatarPath: _avatarPath,
@@ -215,7 +216,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
       } else {
         context.read<ChildrenBloc>().add(
           ChildrenAdd(
-            name: _nameController.text,
+            name: _nameController.text.trim(),
             birthDate: _birthDate!,
             gender: _gender,
             avatarPath: _avatarPath,
