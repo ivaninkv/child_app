@@ -132,6 +132,7 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
                       Expanded(
                         child: TextField(
                           controller: _tagController,
+                          textCapitalization: TextCapitalization.words,
                           decoration: const InputDecoration(
                             hintText: 'Добавить тег',
                             prefixIcon: Icon(Icons.tag),
@@ -147,7 +148,7 @@ class _PhotoFormScreenState extends State<PhotoFormScreen> {
                       ),
                       IconButton(
                         onPressed: () {
-                          final tag = _tagController.text;
+                          final tag = _tagController.text.trim();
                           if (tag.isNotEmpty && !_selectedTags.contains(tag)) {
                             setState(() => _selectedTags.add(tag));
                             _tagController.clear();

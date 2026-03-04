@@ -174,6 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SizedBox(
             height: 40,
             child: TextField(
+              textCapitalization: TextCapitalization.sentences,
               decoration: InputDecoration(
                 hintText: 'Поиск...',
                 prefixIcon: const Icon(Icons.search, size: 20),
@@ -193,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                 ).colorScheme.surfaceContainerHighest,
               ),
-              onChanged: (value) => setState(() => _searchQuery = value),
+              onChanged: (value) => setState(() => _searchQuery = value.trim()),
             ),
           ),
         ),

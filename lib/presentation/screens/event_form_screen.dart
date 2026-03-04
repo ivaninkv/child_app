@@ -94,6 +94,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                 children: [
                   TextFormField(
                     controller: _titleController,
+                    textCapitalization: TextCapitalization.words,
                     decoration: const InputDecoration(
                       labelText: 'Заголовок *',
                       prefixIcon: Icon(Icons.title),
@@ -108,6 +109,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _descriptionController,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                       labelText: 'Описание *',
                       prefixIcon: Icon(Icons.description),
@@ -190,8 +192,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
       if (isEditing && _existingEvent != null) {
         final updatedEvent = _existingEvent!.copyWith(
-          title: _titleController.text,
-          description: _descriptionController.text,
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
           date: _date,
           category: _category,
           photoIds: _selectedPhotoIds,
@@ -201,8 +203,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
         context.read<EventsBloc>().add(
           EventsAdd(
             childId: childId,
-            title: _titleController.text,
-            description: _descriptionController.text,
+            title: _titleController.text.trim(),
+            description: _descriptionController.text.trim(),
             date: _date,
             category: _category,
             photoIds: _selectedPhotoIds,
