@@ -7,6 +7,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/utils/date_utils.dart' as date_utils;
+import '../../core/utils/exif_utils.dart';
 import '../bloc/events/events_bloc.dart';
 import '../bloc/timeline/timeline_bloc.dart';
 import '../bloc/app/app_bloc.dart';
@@ -326,13 +327,19 @@ class _EventFormScreenState extends State<EventFormScreen> {
     final childId = appState.selectedChild!.id;
     final thumbnailPath = await _generateThumbnail(imagePath);
 
+    final year = await extractYearFromImage(imagePath);
+    final tags = <String>[];
+    if (year != null) {
+      tags.add(year.toString());
+    }
+
     final photo = Photo(
       id: const Uuid().v4(),
       childId: childId,
       imagePath: imagePath,
       thumbnailPath: thumbnailPath ?? imagePath,
       date: DateTime.now(),
-      tags: [],
+      tags: tags,
       createdAt: DateTime.now(),
     );
 
