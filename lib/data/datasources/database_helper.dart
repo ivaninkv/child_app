@@ -450,9 +450,9 @@ class DatabaseHelper {
         parameterId = map['parameter_id'] as String?;
       }
 
-      // Обрезаем до 20 символов
-      if (relatedTitle != null && relatedTitle.length > 20) {
-        relatedTitle = '${relatedTitle.substring(0, 17)}...';
+      // Обрезаем до 30 символов
+      if (relatedTitle != null && relatedTitle.length > 30) {
+        relatedTitle = '${relatedTitle.substring(0, 27)}...';
       }
 
       final photo = Photo.fromMap(map, tags: tags).copyWith(

@@ -343,66 +343,61 @@ class _PhotoThumbnail extends StatelessWidget {
                     : null,
               ),
             ),
-          if (photo.relatedTitle != null)
+          if (photo.relatedTitle != null && !isSelectionMode)
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  border: Border(
-                    left: BorderSide(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    if (photo.eventId != null) {
+                      context.go('/timeline/event/${photo.eventId}');
+                    } else if (photo.parameterId != null) {
+                      context.go('/timeline/parameter/${photo.parameterId}');
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
                       color: photo.isFromEvent
                           ? const Color(0xFF1976D2)
                           : const Color(0xFFEF6C00),
-                      width: 6,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Контейнер для иконки (переход в заметку/замер)
-                    GestureDetector(
-                      onTap: () {
-                        if (photo.eventId != null) {
-                          context.go('/timeline/event/${photo.eventId}');
-                        } else if (photo.parameterId != null) {
-                          context.go(
-                            '/timeline/parameter/${photo.parameterId}',
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                        child: Icon(
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
                           photo.isFromEvent
                               ? Icons.description
                               : Icons.straighten,
-                          size: 16,
+                          size: 14,
                           color: Colors.white,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        photo.relatedTitle!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(width: 4),
+                        Text(
+                          photo.relatedTitle!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
