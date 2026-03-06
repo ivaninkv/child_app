@@ -90,11 +90,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? _buildSearchField()
                 : _buildChildSelector(appState),
             actions: [
-              if (_currentIndex != 0)
-                IconButton(
-                  icon: const Icon(Icons.settings),
-                  onPressed: () => context.go('/settings'),
-                ),
+              IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () => context.go('/settings'),
+              ),
             ],
           ),
           body: _buildBody(selectedChild),
