@@ -82,82 +82,74 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<EventsBloc, EventsState>(
-      listener: (context, state) {
-        if (state is EventsAdded) {
-          final childId = context.read<AppBloc>().state.selectedChild!.id;
-          context.read<TimelineBloc>().add(TimelineRefresh(childId));
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(isEditing ? 'Редактировать событие' : 'Новое событие'),
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    TextFormField(
-                      controller: _titleController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Заголовок *',
-                        prefixIcon: Icon(Icons.title),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Введите заголовок';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _descriptionController,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Описание *',
-                        prefixIcon: Icon(Icons.description),
-                        alignLabelWithHint: true,
-                      ),
-                      maxLines: 5,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Введите описание';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.category),
-                      title: Text(_category ?? 'Категория'),
-                      trailing: const Icon(Icons.arrow_drop_down),
-                      onTap: _pickCategory,
-                    ),
-                    const SizedBox(height: 8),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.calendar_today),
-                      title: Text(date_utils.DateUtils.formatDateShort(_date)),
-                      trailing: const Icon(Icons.edit),
-                      onTap: _pickDate,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildPhotoAttachmentSection(),
-                    const SizedBox(height: 32),
-                    FilledButton(
-                      onPressed: _save,
-                      child: Text(isEditing ? 'Сохранить' : 'Добавить'),
-                    ),
-                  ],
-                ),
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditing ? 'Редактировать событие' : 'Новое событие'),
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  TextFormField(
+                    controller: _titleController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Заголовок *',
+                      prefixIcon: Icon(Icons.title),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Введите заголовок';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descriptionController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Описание *',
+                      prefixIcon: Icon(Icons.description),
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 5,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Введите описание';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.category),
+                    title: Text(_category ?? 'Категория'),
+                    trailing: const Icon(Icons.arrow_drop_down),
+                    onTap: _pickCategory,
+                  ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today),
+                    title: Text(date_utils.DateUtils.formatDateShort(_date)),
+                    trailing: const Icon(Icons.edit),
+                    onTap: _pickDate,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPhotoAttachmentSection(),
+                  const SizedBox(height: 32),
+                  FilledButton(
+                    onPressed: _save,
+                    child: Text(isEditing ? 'Сохранить' : 'Добавить'),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -220,6 +212,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
             photoIds: _selectedPhotoIds,
           ),
         );
+        context.read<TimelineBloc>().add(TimelineRefresh(childId));
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
