@@ -109,6 +109,15 @@ class EventsLoaded extends EventsState {
   List<Object?> get props => [events];
 }
 
+class EventsAdded extends EventsState {
+  final List<Event> events;
+
+  const EventsAdded(this.events);
+
+  @override
+  List<Object?> get props => [events];
+}
+
 class EventsError extends EventsState {
   final String message;
 
@@ -159,7 +168,7 @@ class EventsBloc extends Bloc<EventsEvent, EventsState> {
 
       await _db.insertEvent(newEvent);
       final events = await _db.getEventsForChild(event.childId);
-      emit(EventsLoaded(events));
+      emit(EventsAdded(events));
     } catch (e) {
       emit(EventsError(e.toString()));
     }
