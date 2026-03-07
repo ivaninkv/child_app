@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -6,6 +7,11 @@ import '../../core/utils/date_utils.dart' as date_utils;
 import '../bloc/parameters/parameters_bloc.dart';
 import '../bloc/app/app_bloc.dart';
 import '../../data/models/models.dart';
+
+enum ChartViewMode { height, weight, both }
+
+const kHeightColor = Color(0xFF42A5F5);
+const kWeightColor = Color(0xFF66BB6A);
 
 class GrowthScreen extends StatefulWidget {
   final String? childId;
@@ -16,14 +22,13 @@ class GrowthScreen extends StatefulWidget {
   State<GrowthScreen> createState() => _GrowthScreenState();
 }
 
-class _GrowthScreenState extends State<GrowthScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _GrowthScreenState extends State<GrowthScreen> {
+  ChartViewMode _viewMode = ChartViewMode.both;
+  int? _touchedIndex;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final childId =
           widget.childId ?? context.read<AppBloc>().state.selectedChild?.id;
@@ -31,12 +36,6 @@ class _GrowthScreenState extends State<GrowthScreen>
         context.read<ParametersBloc>().add(ParametersLoad(childId));
       }
     });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   @override
@@ -56,13 +55,26 @@ class _GrowthScreenState extends State<GrowthScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Параметры развития'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Рост'),
-            Tab(text: 'Вес'),
-          ],
-        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: SegmentedButton<ChartViewMode>(
+              segments: const [
+                ButtonSegment(value: ChartViewMode.height, label: Text('Рост')),
+                ButtonSegment(value: ChartViewMode.weight, label: Text('Вес')),
+                ButtonSegment(value: ChartViewMode.both, label: Text('Оба')),
+              ],
+              selected: {_viewMode},
+              onSelectionChanged: (Set<ChartViewMode> selection) {
+                setState(() => _viewMode = selection.first);
+              },
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+        ],
       ),
       body: BlocBuilder<ParametersBloc, ParametersState>(
         builder: (context, state) {
@@ -93,15 +105,7 @@ class _GrowthScreenState extends State<GrowthScreen>
               children: [
                 if (state.latestHeight != null || state.latestWeight != null)
                   _buildLatestStats(state),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildChart(state.parameters, true),
-                      _buildChart(state.parameters, false),
-                    ],
-                  ),
-                ),
+                Expanded(child: _buildChart(state.parameters)),
               ],
             );
           }
@@ -162,87 +166,182 @@ class _GrowthScreenState extends State<GrowthScreen>
     );
   }
 
-  Widget _buildChart(List<Parameter> parameters, bool isHeight) {
-    final dataPoints = <FlSpot>[];
-
-    final filtered = parameters
-        .where((p) => isHeight ? p.height != null : p.weight != null)
-        .toList();
+  Widget _buildChart(List<Parameter> parameters) {
+    final filtered = parameters.where((p) {
+      if (_viewMode == ChartViewMode.height) return p.height != null;
+      if (_viewMode == ChartViewMode.weight) return p.weight != null;
+      return p.height != null || p.weight != null;
+    }).toList();
     filtered.sort((a, b) => a.date.compareTo(b.date));
 
-    for (int i = 0; i < filtered.length; i++) {
-      final value = isHeight ? filtered[i].height! : filtered[i].weight!;
-      dataPoints.add(FlSpot(i.toDouble(), value));
-    }
-
-    if (dataPoints.isEmpty) {
+    if (filtered.isEmpty) {
       return const Center(child: Text('Нет данных'));
     }
 
-    final minY =
-        dataPoints.map((p) => p.y).reduce((a, b) => a < b ? a : b) - 10;
-    final maxY =
-        dataPoints.map((p) => p.y).reduce((a, b) => a > b ? a : b) + 10;
+    final hasHeight = filtered.any((p) => p.height != null);
+    final hasWeight = filtered.any((p) => p.weight != null);
+
+    if (_viewMode == ChartViewMode.both) {
+      final charts = <Widget>[];
+      if (hasHeight) {
+        charts.add(Expanded(child: _buildHeightChart(filtered)));
+      }
+      if (hasHeight && hasWeight) {
+        charts.add(const SizedBox(height: 16));
+      }
+      if (hasWeight) {
+        charts.add(Expanded(child: _buildWeightChart(filtered)));
+      }
+      return Column(children: charts);
+    }
+
+    if (_viewMode == ChartViewMode.height) {
+      if (!hasHeight) {
+        return const Center(child: Text('Нет данных о росте'));
+      }
+      return _buildHeightChart(filtered);
+    }
+
+    if (_viewMode == ChartViewMode.weight) {
+      if (!hasWeight) {
+        return const Center(child: Text('Нет данных о весе'));
+      }
+      return _buildWeightChart(filtered);
+    }
+
+    return const SizedBox();
+  }
+
+  Widget _buildHeightChart(List<Parameter> filtered) {
+    final heightSpots = <FlSpot>[];
+    for (int i = 0; i < filtered.length; i++) {
+      if (filtered[i].height != null) {
+        heightSpots.add(FlSpot(i.toDouble(), filtered[i].height!));
+      }
+    }
+
+    if (heightSpots.isEmpty) {
+      return const Center(child: Text('Нет данных о росте'));
+    }
+
+    final minY = heightSpots.map((p) => p.y).reduce(math.min) - 10;
+    final maxY = heightSpots.map((p) => p.y).reduce(math.max) + 10;
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: LineChart(
         LineChartData(
-          gridData: const FlGridData(show: true),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 10,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey.withValues(alpha: 0.2),
+              strokeWidth: 1,
+            ),
+          ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
+              axisNameWidget: const Text(
+                'Дата',
+                style: TextStyle(fontSize: 12),
+              ),
+              axisNameSize: 20,
               sideTitles: SideTitles(
                 showTitles: true,
+                reservedSize: 30,
+                interval: 1,
                 getTitlesWidget: (value, meta) {
                   if (value.toInt() < filtered.length) {
                     final date = filtered[value.toInt()].date;
-                    return Text('${date.month}/${date.year % 100}');
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${date.month}/${date.year % 100}',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
                   }
                   return const Text('');
                 },
               ),
             ),
             leftTitles: AxisTitles(
+              axisNameWidget: const Text(
+                'Рост (см)',
+                style: TextStyle(fontSize: 12),
+              ),
+              axisNameSize: 20,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 40,
-                getTitlesWidget: (value, meta) =>
-                    Text(value.toInt().toString()),
+                interval: 10,
+                getTitlesWidget: (value, meta) => Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10),
+                ),
               ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
             ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
-          borderData: FlBorderData(show: true),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+          ),
           minX: 0,
-          maxX: (dataPoints.length - 1).toDouble(),
+          maxX: (filtered.length - 1).toDouble(),
           minY: minY,
           maxY: maxY,
           lineBarsData: [
             LineChartBarData(
-              spots: dataPoints,
+              spots: heightSpots,
               isCurved: true,
-              color: isHeight ? Colors.blue : Colors.green,
+              color: kHeightColor,
               barWidth: 3,
-              dotData: const FlDotData(show: true),
+              dotData: FlDotData(
+                show: false,
+                checkToShowDot: (spot, barData) =>
+                    _touchedIndex == spot.x.toInt(),
+              ),
               belowBarData: BarAreaData(
                 show: true,
-                color: (isHeight ? Colors.blue : Colors.green).withAlpha(50),
+                gradient: LinearGradient(
+                  colors: [
+                    kHeightColor.withValues(alpha: 0.3),
+                    kHeightColor.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
             ),
           ],
           lineTouchData: LineTouchData(
+            touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+              if (response != null && response.lineBarSpots != null) {
+                setState(() {
+                  _touchedIndex = response.lineBarSpots!.first.x.toInt();
+                });
+              } else {
+                setState(() {
+                  _touchedIndex = null;
+                });
+              }
+            },
             touchTooltipData: LineTouchTooltipData(
               getTooltipItems: (touchedSpots) {
+                if (touchedSpots.isEmpty) return [];
+                final index = touchedSpots.first.x.toInt();
+                if (index >= filtered.length) return [];
+                final date = filtered[index].date;
                 return touchedSpots.map((spot) {
-                  final index = spot.x.toInt();
-                  final date = filtered[index].date;
                   return LineTooltipItem(
-                    '${isHeight ? "Рост" : "Вес"}: ${spot.y}${isHeight ? " см" : " кг"}\n${date_utils.DateUtils.formatDateShort(date)}',
+                    'Рост: ${spot.y.toInt()} см\n${date_utils.DateUtils.formatDateShort(date)}',
                     const TextStyle(color: Colors.white),
                   );
                 }).toList();
@@ -250,6 +349,151 @@ class _GrowthScreenState extends State<GrowthScreen>
             ),
           ),
         ),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  Widget _buildWeightChart(List<Parameter> filtered) {
+    final weightSpots = <FlSpot>[];
+    for (int i = 0; i < filtered.length; i++) {
+      if (filtered[i].weight != null) {
+        weightSpots.add(FlSpot(i.toDouble(), filtered[i].weight!));
+      }
+    }
+
+    if (weightSpots.isEmpty) {
+      return const Center(child: Text('Нет данных о весе'));
+    }
+
+    final minY = weightSpots.map((p) => p.y).reduce(math.min) - 2;
+    final maxY = weightSpots.map((p) => p.y).reduce(math.max) + 2;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 5,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey.withValues(alpha: 0.2),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              axisNameWidget: const Text(
+                'Дата',
+                style: TextStyle(fontSize: 12),
+              ),
+              axisNameSize: 20,
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < filtered.length) {
+                    final date = filtered[value.toInt()].date;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${date.month}/${date.year % 100}',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              axisNameWidget: const Text(
+                'Вес (кг)',
+                style: TextStyle(fontSize: 12),
+              ),
+              axisNameSize: 20,
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: 5,
+                getTitlesWidget: (value, meta) => Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10),
+                ),
+              ),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+          ),
+          minX: 0,
+          maxX: (filtered.length - 1).toDouble(),
+          minY: minY,
+          maxY: maxY,
+          lineBarsData: [
+            LineChartBarData(
+              spots: weightSpots,
+              isCurved: true,
+              color: kWeightColor,
+              barWidth: 3,
+              dotData: FlDotData(
+                show: false,
+                checkToShowDot: (spot, barData) =>
+                    _touchedIndex == spot.x.toInt(),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [
+                    kWeightColor.withValues(alpha: 0.3),
+                    kWeightColor.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ],
+          lineTouchData: LineTouchData(
+            touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+              if (response != null && response.lineBarSpots != null) {
+                setState(() {
+                  _touchedIndex = response.lineBarSpots!.first.x.toInt();
+                });
+              } else {
+                setState(() {
+                  _touchedIndex = null;
+                });
+              }
+            },
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (touchedSpots) {
+                if (touchedSpots.isEmpty) return [];
+                final index = touchedSpots.first.x.toInt();
+                if (index >= filtered.length) return [];
+                final date = filtered[index].date;
+                return touchedSpots.map((spot) {
+                  return LineTooltipItem(
+                    'Вес: ${spot.y.toStringAsFixed(1)} кг\n${date_utils.DateUtils.formatDateShort(date)}',
+                    const TextStyle(color: Colors.white),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+        ),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       ),
     );
   }
